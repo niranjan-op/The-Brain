@@ -1,9 +1,11 @@
 
+name: local-dev-setup  # keeps the existing postgres_data volume
+
 services:
   db:
     build:
-      context: ./postgres
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/postgres.Dockerfile
     container_name: local-postgres
     restart: unless-stopped
     environment:
@@ -31,7 +33,7 @@ services:
     container_name: local-firebase-auth
     working_dir: /workspace
     volumes:
-      - ./firebase:/workspace
+      - ./docker/firebase:/workspace
     command: >
       sh -c "npx --yes firebase-tools emulators:start
       --only auth
@@ -42,5 +44,19 @@ services:
       - "127.0.0.1:4000:4000"
     init: true
 
+  minio:
+    image: minio/minio
+    container_name: local-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio_data:/data
+
 volumes:
   postgres_data:
+  minio_data:
