@@ -1,0 +1,58 @@
+[project]
+name = "knowledge-cartographer"
+version = "0.1.0"
+requires-python = ">=3.13"
+# API image: keep this slim (no docling / torch).
+dependencies = [
+    "fastapi[standard]>=0.141",
+    "uvicorn[standard]>=0.53",
+    "python-multipart>=0.0.32",
+    "pydantic-settings>=2.15",
+    "sqlalchemy[asyncio]>=2.1",
+    "asyncpg>=0.32",
+    "psycopg[binary]>=3.3",
+    "alembic>=1.20",
+    "python-dotenv>=1.2",
+    "firebase-admin",
+    "boto3",
+    "google-auth>=2.62",
+    "requests>=2.34",
+    "google-genai>=2.30.1",
+    "docling>=2.145.0",
+    "neo4j>=5.28",
+]
+
+[dependency-groups]
+# Worker image only: `uv sync --group worker`.
+worker = [
+    "docling>=2.137",
+    "torch>=2.14",
+]
+dev = [
+    "pytest>=9.2",
+    "pytest-asyncio",
+    "httpx>=0.28",
+    "ruff>=0.17",
+    "pyright",
+]
+
+[tool.uv]
+package = false  # app is run from the repo root (`src.kc...`, `main:app`), not installed
+
+# Linux (the worker image) gets CPU-only torch; Windows dev keeps the default wheel.
+[tool.uv.sources]
+torch = { index = "pytorch-cpu", marker = "sys_platform == 'linux'" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.pyright]
+include = ["src", "main.py", "tests"]
+pythonVersion = "3.13"

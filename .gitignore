@@ -216,3 +216,29 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local notes
+concerns.md
+.local_storage/
+
+# Tooling / agent / scratch (not needed to run the app)
+AGENTS.md
+PRODUCT.md
+.codex/
+.gemini/
+.impeccable/
+.kiro/
+.agents/
+docs/superpowers/
+graphify-out/
+DUMP/
+reference_code/
+local-dev-setup/
+test-results/
+skills-lock.json
+landing-page-task.md
+*.xlsx
+*.pdf
+neo_test.py
+test.py
+test_openrouter.py
