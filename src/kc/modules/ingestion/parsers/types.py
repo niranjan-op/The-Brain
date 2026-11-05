@@ -1,9 +1,7 @@
+import hashlib
 from pathlib import Path
 
 from fastapi import HTTPException, UploadFile
-
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 MAX_FILE_SIZE_MB = 5
@@ -48,18 +46,15 @@ async def verify_file_type(file:UploadFile):
             raise HTTPException(415, "File content does not match its extension")
     return ext
 
-async def verify_file_size(file:UploadFile, session: AsyncSession, doc, doc_uuid):
-    # Checking file size
+async def verify_file_size(file: UploadFile) -> tuple[int, str]:
+    """Validate file size <= MAX_FILE_SIZE and compute SHA-256 hex digest in a single pass."""
     size = 0
-    while chunk := await file.read(64*1024):
-        size+= len(chunk)
-        if size>MAX_FILE_SIZE:
+    hasher = hashlib.sha256()
+    while chunk := await file.read(64 * 1024):
+        size += len(chunk)
+        if size > MAX_FILE_SIZE:
             await file.seek(0)
-            raise HTTPException(413,f"File size exceeds {MAX_FILE_SIZE_MB}MB limit!")
+            raise HTTPException(413, f"File size exceeds {MAX_FILE_SIZE_MB}MB limit!")
+        hasher.update(chunk)
     await file.seek(0)
-    await session.execute(
-          text("UPDATE documents SET size_bytes = :size WHERE doc_uuid = :id"),
-          {"size": size, "id": doc_uuid},
-      )
-    await session.commit()
-    return size
+    return size, hasher.hexdigest()

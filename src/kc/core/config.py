@@ -23,6 +23,19 @@ class Settings(DbSettings):
     s3_region: str = "us-east-1"
 
     keyword_engine: Literal["bm25", "tsvector"] = "bm25"
+    graph_read_backend: Literal["postgres", "aura"] = "postgres"
+    query_rate_limit_per_minute: int = 10
+
+    # LLM & Local Embeddings (google-genai reads its auth from env itself; see .env.example)
+    image_model: str = "gemini-3.1-flash-lite"
+    embed_model: str = "BAAI/bge-base-en-v1.5"
+    chat_model: str = "gemini-3.1-flash-lite"
+
+    # Neo4j AuraDB (Graph projection from Postgres source-of-truth)
+    neo4j_uri: str | None = None
+    neo4j_username: str | None = None
+    neo4j_password: str | None = None
+    neo4j_database: str = "neo4j"
 
     # Workers
     run_local_workers: bool = False

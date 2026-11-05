@@ -1,16 +1,21 @@
-from typing import Annotated
+from typing import Annotated, Literal
+import uuid
 from firebase_admin.auth import get_user
+from pydantic import BaseModel, Field
 from requests import session
 from src.kc.core.auth import get_current_user
 import os
 import firebase_admin
 from src.kc.core.config import settings
 from starlette.datastructures import UploadFile
-from fastapi import Depends, FastAPI, Header, HTTPException, UploadFile, File, Header, BackgroundTasks
+from fastapi import Depends, FastAPI, Header, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
 from src.kc.modules.ingestion.parsers.types import verify_file_type, verify_file_size
 from src.kc.core.storage import upload_file
 from sqlalchemy import text
 from src.kc.core.db import get_session
+from src.kc.core.rate_limit import query_rate_limiter
+from src.kc.modules.search.graph_rag import retrieve_and_answer
 import hashlib
 import asyncio
 from contextlib import asynccontextmanager
@@ -28,9 +33,30 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+cors_origins = [
+    origin.strip()
+    for origin in os.environ.get(
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173",
+    ).split(",")
+    if origin.strip()
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 if settings.firebase_auth_emulator_host:
     os.environ["FIREBASE_AUTH_EMULATOR_HOST"] = settings.firebase_auth_emulator_host
 firebase_admin.initialize_app(options = {"projectId":settings.firebase_project_id})
+
+@app.get("/healthz")
+async def healthz():
+    return {"status": "ok"}
 
 @app.get("/")
 async def root():
@@ -115,6 +141,90 @@ async def list_projects(user: CurrentUser, session: DBSession):
 @app.patch("/projects/{project_id}")
 async def update_project(project_uuid, name, user: CurrentUser, session: DBSession):
     pass
+
+
+class QueryRequest(BaseModel):
+    query: str = Field(min_length=1)
+    convo_uuid: uuid.UUID | None = None
+    excluded_doc_uuids: list[uuid.UUID] | None = None
+    k_chunks: int = Field(default=8, ge=1, le=30)
+    k_nodes: int = Field(default=5, ge=1, le=20)
+    search_mode: Literal["hybrid", "vector", "keyword"] = "hybrid"
+    use_graph: bool = True
+    use_tools: bool = True
+    generate_answer: bool = True
+
+
+@app.post("/projects/{project_uuid}/query")
+async def query_project(
+    project_uuid: uuid.UUID,
+    body: QueryRequest,
+    user: CurrentUser,
+    session: DBSession,
+):
+    role = (
+        await session.execute(
+            text(
+                """
+                SELECT role FROM project_members
+                WHERE project_uuid = :p AND user_uuid = :u
+                """
+            ),
+            {"p": str(project_uuid), "u": str(user["user_uuid"])},
+        )
+    ).scalar_one_or_none()
+    if role is None:
+        raise HTTPException(403, "Not a member of this project")
+
+    excluded_set: set[str] = {str(d) for d in (body.excluded_doc_uuids or [])}
+    convo_str: str | None = str(body.convo_uuid) if body.convo_uuid else None
+
+    if convo_str is not None:
+        convo = (
+            await session.execute(
+                text(
+                    """
+                    SELECT visibility, created_by
+                    FROM conversations
+                    WHERE convo_uuid = :c AND project_uuid = :p AND deleted_at IS NULL
+                    """
+                ),
+                {"c": convo_str, "p": str(project_uuid)},
+            )
+        ).mappings().first()
+        if convo is None:
+            raise HTTPException(404, "Conversation not found in this project")
+        if convo["visibility"] == "private" and str(convo["created_by"]) != str(user["user_uuid"]):
+            raise HTTPException(403, "Private conversation belongs to another user")
+
+        convo_excluded = (
+            await session.execute(
+                text(
+                    """
+                    SELECT doc_uuid FROM conversation_excluded_sources
+                    WHERE convo_uuid = :c
+                    """
+                ),
+                {"c": convo_str},
+            )
+        ).scalars().all()
+        excluded_set.update(str(d) for d in convo_excluded if d is not None)
+
+    if not query_rate_limiter.allow(str(user["user_uuid"])):
+        raise HTTPException(429, "Rate limit exceeded for project queries")
+
+    return await retrieve_and_answer(
+        project_uuid=str(project_uuid),
+        query=body.query,
+        excluded_docs=sorted(excluded_set) if excluded_set else None,
+        convo_uuid=convo_str,
+        k_chunks=body.k_chunks,
+        k_nodes=body.k_nodes,
+        search_mode=body.search_mode,
+        use_graph=body.use_graph,
+        use_tools=body.use_tools,
+        generate_answer=body.generate_answer,
+    )
     
     
 
@@ -122,13 +232,34 @@ async def update_project(project_uuid, name, user: CurrentUser, session: DBSessi
 async def upload(project_uuid, user: CurrentUser, session: DBSession, file: UploadFile = File(...)):
 
     ext = await verify_file_type(file)
-    size = await verify_file_size(file)
+    size, doc_hash = await verify_file_size(file)
 
     doc_uuid = (await session.execute(text("""
-          INSERT INTO documents (project_uuid, filename, mime_type, size_bytes, uploaded_by)
-          VALUES (:p, :fn, :mt, :size, :u) RETURNING doc_uuid
-      """), {"p": project_uuid, "fn": file.filename, "mt": file.content_type, "size": size, "u": user["user_uuid"]})).scalar_one()
+          INSERT INTO documents (project_uuid, filename, doc_hash, mime_type, size_bytes, uploaded_by)
+          VALUES (:p, :fn, :doc_hash, :mt, :size, :u)
+          ON CONFLICT (project_uuid, doc_hash) DO UPDATE
+          SET status = 'pending', error = NULL, deleted_at = NULL, filename = EXCLUDED.filename
+          WHERE documents.status IN ('failed', 'pending') OR documents.deleted_at IS NOT NULL
+          RETURNING doc_uuid
+      """), {
+          "p": project_uuid,
+          "fn": file.filename,
+          "doc_hash": doc_hash,
+          "mt": file.content_type,
+          "size": size,
+          "u": user["user_uuid"],
+      })).scalar_one_or_none()
     await session.commit()
+
+    if doc_uuid is None:
+        existing_uuid = (await session.execute(text("""
+            SELECT doc_uuid FROM documents
+            WHERE project_uuid = :p AND doc_hash = :doc_hash AND deleted_at IS NULL
+        """), {"p": project_uuid, "doc_hash": doc_hash})).scalar_one()
+        existing_job = (await session.execute(text("""
+            SELECT job_id FROM jobs WHERE idempotency_key = :key
+        """), {"key": f"ingest:{existing_uuid}"})).scalar_one_or_none()
+        return {"doc_uuid": existing_uuid, "job_uuid": existing_job, "duplicate": True}
 
     path = f"{project_uuid}/{doc_uuid}{ext}"
     try:
@@ -145,7 +276,9 @@ async def upload(project_uuid, user: CurrentUser, session: DBSession, file: Uplo
         """
         INSERT INTO jobs (project_uuid, user_uuid, doc_uuid, type, idempotency_key)
         VALUES (:pid, :uid, :docid, 'ingest', :key)
-        ON CONFLICT (idempotency_key) DO NOTHING
+        ON CONFLICT (idempotency_key) DO UPDATE
+        SET status = 'queued', attempts = 0, run_after = now(), error = NULL, finished_at = NULL
+        WHERE jobs.status IN ('failed', 'dead')
         RETURNING job_id
         """),
         {"pid": project_uuid, "uid": user["user_uuid"], "docid": doc_uuid, "key": f"ingest:{doc_uuid}"}
