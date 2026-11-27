@@ -26,10 +26,31 @@ class Settings(DbSettings):
     graph_read_backend: Literal["postgres", "aura"] = "postgres"
     query_rate_limit_per_minute: int = 10
 
+    # Quotas & Deep Research defaults (D018, D020, D021)
+    user_daily_llm_calls: int = 50
+    project_default_daily_llm_calls: int = 150
+    global_daily_llm_calls: int = 1000
+    user_daily_uploads: int = 10
+    project_default_daily_uploads: int = 25
+    user_daily_web_searches: int = 15
+    global_daily_web_searches: int = 150
+    research_max_searches_per_run: int = 8
+    research_max_steps_per_run: int = 6
+    research_heartbeat_timeout_seconds: int = 60
+    research_lease_seconds: int = 90
+    llm_max_concurrency: int = 8
+
     # LLM & Local Embeddings (google-genai reads its auth from env itself; see .env.example)
     image_model: str = "gemini-3.1-flash-lite"
     embed_model: str = "BAAI/bge-base-en-v1.5"
     chat_model: str = "gemini-3.1-flash-lite"
+    # Output cap for the chat agent's final answer (thinking + answer on Gemini; completion on OpenRouter).
+    chat_max_output_tokens: int = 40000
+    # Optional directory holding DejaVuSans*.ttf + DejaVuSansMono.ttf for Unicode PDF exports.
+    export_pdf_font_dir: str | None = None
+    openrouter_api_key: str | None = None
+    openrouter_model: str = "nvidia/nemotron-3-ultra-550b-a55b:free"
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
     # Neo4j AuraDB (Graph projection from Postgres source-of-truth)
     neo4j_uri: str | None = None

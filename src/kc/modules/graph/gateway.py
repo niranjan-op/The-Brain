@@ -686,3 +686,222 @@ async def create_edge(
 
         await session.commit()
         return {"status": "created", "edge_uuid": edge_uuid}
+
+
+async def delete_document_cascade(
+    session: Any,
+    *,
+    project_uuid: str,
+    doc_uuid: str,
+    actor_user: str | None = None,
+) -> dict[str, Any]:
+    """Delete a document and cascade-prune its chunks from Vector/Keyword RAG and its
+    evidence, orphaned nodes, and orphaned edges from the Knowledge Graph (Postgres + Neo4j queue).
+    """
+    p_str = str(project_uuid)
+    d_str = str(doc_uuid)
+
+    deleted_doc = (
+        await session.execute(
+            text(
+                """
+                UPDATE documents
+                SET deleted_at = now()
+                WHERE project_uuid = :p AND doc_uuid = :d AND deleted_at IS NULL
+                RETURNING doc_uuid
+                """
+            ),
+            {"p": p_str, "d": d_str},
+        )
+    ).scalar_one_or_none()
+    if deleted_doc is None:
+        return {"deleted": False, "doc_uuid": d_str}
+
+    # 1. Remove from per-conversation excluded sources
+    await session.execute(
+        text("DELETE FROM conversation_excluded_sources WHERE doc_uuid = :d"),
+        {"d": d_str},
+    )
+
+    # 2. Delete all document chunks from Vector + BM25 RAG
+    chunk_rows = (
+        await session.execute(
+            text(
+                """
+                DELETE FROM chunks
+                WHERE project_uuid = :p AND doc_uuid = :d
+                RETURNING chunk_id
+                """
+            ),
+            {"p": p_str, "d": d_str},
+        )
+    ).scalars().all()
+    deleted_chunk_ids = [str(cid) for cid in (chunk_rows or []) if cid is not None]
+
+    if deleted_chunk_ids:
+        await session.execute(
+            text(
+                """
+                DELETE FROM message_sources
+                WHERE source_kind = 'chunk' AND source_id = ANY(CAST(:cids AS text[]))
+                """
+            ),
+            {"cids": deleted_chunk_ids},
+        )
+
+    # 3. Locate all evidence rows tied to this document or its chunks
+    ev_rows = (
+        await session.execute(
+            text(
+                """
+                SELECT id
+                FROM evidence
+                WHERE project_uuid = :p
+                  AND (
+                      doc_uuid = :d
+                      OR (kind = 'chunk' AND ref = ANY(CAST(:cids AS text[])))
+                  )
+                """
+            ),
+            {"p": p_str, "d": d_str, "cids": deleted_chunk_ids},
+        )
+    ).scalars().all()
+    ev_ids = [int(eid) for eid in (ev_rows or []) if eid is not None]
+
+    orphaned_node_ids: list[str] = []
+    orphaned_edge_ids: list[str] = []
+
+    if ev_ids:
+        linked_rows = (
+            await session.execute(
+                text(
+                    """
+                    DELETE FROM node_evidence
+                    WHERE evidence_id = ANY(CAST(:eids AS bigint[]))
+                    RETURNING node_uuid, edge_uuid
+                    """
+                ),
+                {"eids": ev_ids},
+            )
+        ).mappings().all()
+
+        await session.execute(
+            text("DELETE FROM evidence WHERE id = ANY(CAST(:eids AS bigint[]))"),
+            {"eids": ev_ids},
+        )
+
+        affected_nodes = list(
+            dict.fromkeys(str(r["node_uuid"]) for r in linked_rows if r.get("node_uuid") is not None)
+        )
+        affected_edges = list(
+            dict.fromkeys(str(r["edge_uuid"]) for r in linked_rows if r.get("edge_uuid") is not None)
+        )
+
+        # 4. Prune edges that no longer have any backing evidence
+        if affected_edges:
+            orphan_edges = (
+                await session.execute(
+                    text(
+                        """
+                        SELECT e.edge_uuid
+                        FROM edges e
+                        LEFT JOIN node_evidence ne ON ne.edge_uuid = e.edge_uuid
+                        WHERE e.project_uuid = :p
+                          AND e.edge_uuid = ANY(CAST(:eids AS uuid[]))
+                        GROUP BY e.edge_uuid
+                        HAVING count(ne.evidence_id) = 0
+                        """
+                    ),
+                    {"p": p_str, "eids": affected_edges},
+                )
+            ).scalars().all()
+            orphaned_edge_ids = [str(eid) for eid in (orphan_edges or []) if eid is not None]
+            if orphaned_edge_ids:
+                await session.execute(
+                    text(
+                        """
+                        DELETE FROM edges
+                        WHERE project_uuid = :p AND edge_uuid = ANY(CAST(:eids AS uuid[]))
+                        """
+                    ),
+                    {"p": p_str, "eids": orphaned_edge_ids},
+                )
+                for eid in orphaned_edge_ids:
+                    await session.execute(
+                        text(
+                            """
+                            INSERT INTO graph_changes (project_uuid, op, payload, actor_user)
+                            VALUES (:p, 'delete_edge', CAST(:payload AS jsonb), :u)
+                            """
+                        ),
+                        {
+                            "p": p_str,
+                            "payload": json.dumps({"edge_uuid": eid, "project_uuid": p_str}),
+                            "u": actor_user,
+                        },
+                    )
+
+        # 5. Prune nodes that no longer have any backing evidence
+        if affected_nodes:
+            orphan_nodes = (
+                await session.execute(
+                    text(
+                        """
+                        SELECT n.node_uuid
+                        FROM nodes n
+                        LEFT JOIN node_evidence ne ON ne.node_uuid = n.node_uuid
+                        WHERE n.project_uuid = :p
+                          AND n.node_uuid = ANY(CAST(:nids AS uuid[]))
+                        GROUP BY n.node_uuid
+                        HAVING count(ne.evidence_id) = 0
+                        """
+                    ),
+                    {"p": p_str, "nids": affected_nodes},
+                )
+            ).scalars().all()
+            orphaned_node_ids = [str(nid) for nid in (orphan_nodes or []) if nid is not None]
+            if orphaned_node_ids:
+                await session.execute(
+                    text(
+                        """
+                        DELETE FROM edges
+                        WHERE project_uuid = :p
+                          AND (
+                              src_node = ANY(CAST(:nids AS uuid[]))
+                              OR dst_node = ANY(CAST(:nids AS uuid[]))
+                          )
+                        """
+                    ),
+                    {"p": p_str, "nids": orphaned_node_ids},
+                )
+                await session.execute(
+                    text(
+                        """
+                        DELETE FROM nodes
+                        WHERE project_uuid = :p AND node_uuid = ANY(CAST(:nids AS uuid[]))
+                        """
+                    ),
+                    {"p": p_str, "nids": orphaned_node_ids},
+                )
+                for nid in orphaned_node_ids:
+                    await session.execute(
+                        text(
+                            """
+                            INSERT INTO graph_changes (project_uuid, op, payload, actor_user)
+                            VALUES (:p, 'delete_node', CAST(:payload AS jsonb), :u)
+                            """
+                        ),
+                        {
+                            "p": p_str,
+                            "payload": json.dumps({"node_uuid": nid, "project_uuid": p_str}),
+                            "u": actor_user,
+                        },
+                    )
+
+    return {
+        "deleted": True,
+        "doc_uuid": d_str,
+        "deleted_chunks": len(deleted_chunk_ids),
+        "deleted_nodes": len(orphaned_node_ids),
+        "deleted_edges": len(orphaned_edge_ids),
+    }

@@ -45,7 +45,7 @@ services:
     init: true
 
   minio:
-    image: quay.io/minio/minio
+    image: docker.io/minio/minio:latest
     container_name: local-minio
     command: server /data --console-address ":9001"
     environment:

@@ -12,6 +12,7 @@ import hashlib
 import io
 import math
 from pathlib import Path
+import threading
 from typing import Any
 
 from src.kc.modules.ingestion.images import describe_image
@@ -21,6 +22,7 @@ SKIP_PICTURE_CLASSES = {"logo", "icon", "signature", "qr_code", "bar_code", "sta
 
 _CONVERTER: Any = None
 _CHUNKER: Any = None
+_DOCLING_LOCK = threading.Lock()
 
 
 def _safe_text(value: Any) -> str:
@@ -151,23 +153,27 @@ def parse_txt(data: bytes, filename: str, doc_uuid: str, max_chars: int = 2000) 
             seen_para.add(p)
             paragraphs.append(p)
 
-    grouped: list[str] = []
+    grouped: list[tuple[str, int, int]] = []
     current: list[str] = []
+    current_start_para = 1
     current_len = 0
-    for para in paragraphs:
+    for idx, para in enumerate(paragraphs, start=1):
         if current and current_len + len(para) + 2 > max_chars:
-            grouped.append("\n\n".join(current))
+            grouped.append(("\n\n".join(current), current_start_para, idx - 1))
             current = [para]
+            current_start_para = idx
             current_len = len(para)
         else:
+            if not current:
+                current_start_para = idx
             current.append(para)
             current_len += len(para) + 2
     if current:
-        grouped.append("\n\n".join(current))
+        grouped.append(("\n\n".join(current), current_start_para, len(paragraphs)))
 
     seen_hashes: set[str] = set()
     chunks: list[dict[str, Any]] = []
-    for raw_block in grouped:
+    for raw_block, para_start, para_end in grouped:
         text_hash = hashlib.sha256(raw_block.encode("utf-8")).hexdigest()
         if text_hash in seen_hashes:
             continue
@@ -184,7 +190,7 @@ def parse_txt(data: bytes, filename: str, doc_uuid: str, max_chars: int = 2000) 
                 "text": raw_block,
                 "embed_text": raw_block,
                 "text_hash": text_hash,
-                "payload": {},
+                "payload": {"para_start": para_start, "para_end": para_end},
             }
         )
 
@@ -227,7 +233,11 @@ def parse_csv(data: bytes, filename: str, doc_uuid: str, rows_per_chunk: int = 5
                 "text": body,
                 "embed_text": body,
                 "text_hash": text_hash,
-                "payload": {"table": {"columns": headers, "rows": batch}},
+                "payload": {
+                    "para_start": ordinal + 1,
+                    "para_end": ordinal + 1,
+                    "table": {"columns": headers, "rows": batch},
+                },
             }
         )
 
@@ -296,53 +306,56 @@ def _extract_picture_crops(document: Any) -> list[dict[str, Any]]:
 def _run_docling_sync(data: bytes, filename: str) -> tuple[Any, dict[str, dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     from docling.datamodel.base_models import DocumentStream
 
-    converter = _get_converter()
-    stream = DocumentStream(name=filename, stream=io.BytesIO(data))
-    conversion_result = converter.convert(stream)
-    document = conversion_result.document
+    with _DOCLING_LOCK:
+        converter = _get_converter()
+        stream = DocumentStream(name=filename, stream=io.BytesIO(data))
+        conversion_result = converter.convert(stream)
+        document = conversion_result.document
 
-    tables_lookup = _extract_tables_lookup(document)
-    pictures_info = _extract_picture_crops(document)
+        tables_lookup = _extract_tables_lookup(document)
+        pictures_info = _extract_picture_crops(document)
 
-    chunker = _get_chunker()
-    raw_chunk_records: list[dict[str, Any]] = []
-    for chunk in chunker.chunk(dl_doc=document):
-        raw_items = list(getattr(getattr(chunk, "meta", None), "doc_items", []) or [])
-        labels = [_get_label(item) for item in raw_items]
+        chunker = _get_chunker()
+        raw_chunk_records: list[dict[str, Any]] = []
+        for chunk in chunker.chunk(dl_doc=document):
+            raw_items = list(getattr(getattr(chunk, "meta", None), "doc_items", []) or [])
+            labels = [_get_label(item) for item in raw_items]
 
-        # Skip TOC / document_index chunks
-        if labels and all("document_index" in lbl for lbl in labels):
-            continue
+            # Skip TOC / document_index chunks
+            if labels and all("document_index" in lbl for lbl in labels):
+                continue
 
-        item_pairs = [(_safe_text(getattr(item, "self_ref", "")), _get_label(item)) for item in raw_items]
-        pages = sorted({p for item in raw_items for p in _get_page_numbers(item)})
+            item_pairs = [(_safe_text(getattr(item, "self_ref", "")), _get_label(item)) for item in raw_items]
+            pages = sorted({p for item in raw_items for p in _get_page_numbers(item)})
 
-        if any("table" in lbl for lbl in labels):
-            kind = "table"
-        elif any("picture" in lbl for lbl in labels):
-            kind = "figure_context"
-        else:
-            kind = "text"
+            if any("table" in lbl for lbl in labels):
+                kind = "table"
+            elif any("picture" in lbl for lbl in labels):
+                kind = "figure_context"
+            else:
+                kind = "text"
 
-        content = chunker.contextualize(chunk=chunk).strip()
-        if not content:
-            continue
+            content = chunker.contextualize(chunk=chunk).strip()
+            if not content:
+                continue
 
-        headings = [_safe_text(h) for h in (getattr(getattr(chunk, "meta", None), "headings", None) or []) if _safe_text(h)]
-        heading_path = " > ".join(headings)
+            headings = [
+                _safe_text(h) for h in (getattr(getattr(chunk, "meta", None), "headings", None) or []) if _safe_text(h)
+            ]
+            heading_path = " > ".join(headings)
 
-        raw_chunk_records.append(
-            {
-                "kind": kind,
-                "content": content,
-                "heading_path": heading_path,
-                "pages": pages,
-                "table_refs": [ref for ref, lbl in item_pairs if ref and "table" in lbl],
-                "picture_refs": [ref for ref, lbl in item_pairs if ref and "picture" in lbl],
-            }
-        )
+            raw_chunk_records.append(
+                {
+                    "kind": kind,
+                    "content": content,
+                    "heading_path": heading_path,
+                    "pages": pages,
+                    "table_refs": [ref for ref, lbl in item_pairs if ref and "table" in lbl],
+                    "picture_refs": [ref for ref, lbl in item_pairs if ref and "picture" in lbl],
+                }
+            )
 
-    return document, tables_lookup, pictures_info, raw_chunk_records
+        return document, tables_lookup, pictures_info, raw_chunk_records
 
 
 async def parse_and_chunk(
@@ -399,6 +412,7 @@ async def parse_and_chunk(
 
     seen_hashes: set[str] = set()
     occurrence_counts: dict[tuple[str, str], int] = {}
+    page_para_counters: dict[int, int] = {}
     chunks: list[dict[str, Any]] = []
 
     for rec in raw_chunk_records:
@@ -456,6 +470,15 @@ async def parse_and_chunk(
         pages = rec["pages"]
         page_start = pages[0] if pages else 1
         page_end = pages[-1] if pages else page_start
+
+        para_blocks = [p.strip() for p in text_body.split("\n\n") if p.strip()]
+        span_count = max(1, len(para_blocks))
+        prev_para = page_para_counters.get(page_start, 0)
+        para_start = prev_para + 1
+        para_end = prev_para + span_count
+        page_para_counters[page_start] = para_end
+        payload["para_start"] = para_start
+        payload["para_end"] = para_end
 
         chunks.append(
             {

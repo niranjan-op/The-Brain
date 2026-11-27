@@ -31,6 +31,11 @@ MATCH (n:Node {node_uuid: $node_uuid, project_uuid: $project_uuid})
 DETACH DELETE n
 """
 
+DELETE_EDGE_CYPHER = """
+MATCH (:Node {project_uuid: $project_uuid})-[r {edge_uuid: $edge_uuid}]->(:Node {project_uuid: $project_uuid})
+DELETE r
+"""
+
 
 def _edge_cypher(rel_type: str) -> str:
     safe_rel = rel_type if rel_type in ALLOWED_EDGE_TYPES else "REL"
@@ -78,6 +83,12 @@ async def _apply_change(neo_session: Any, op: str, payload: dict[str, Any]) -> N
         await neo_session.run(
             DELETE_NODE_CYPHER,
             node_uuid=str(payload["node_uuid"]),
+            project_uuid=str(payload["project_uuid"]),
+        )
+    elif op == "delete_edge":
+        await neo_session.run(
+            DELETE_EDGE_CYPHER,
+            edge_uuid=str(payload["edge_uuid"]),
             project_uuid=str(payload["project_uuid"]),
         )
 

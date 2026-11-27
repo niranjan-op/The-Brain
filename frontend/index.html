@@ -4,7 +4,33 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#060913" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#040117" />
+    <script>
+      try {
+        var override =
+          localStorage.getItem('kc_theme') ||
+          localStorage.getItem('kc_landing_theme');
+        var metaScheme = document.querySelector('meta[name="color-scheme"]');
+        var metaTheme = document.querySelector('meta[name="theme-color"]');
+        if (override === 'light' || override === 'dark') {
+          if (metaScheme) metaScheme.content = override;
+        } else {
+          override = null;
+          if (metaScheme) metaScheme.content = 'light dark';
+        }
+        var systemPref =
+          window.matchMedia &&
+          window.matchMedia('(prefers-color-scheme: light)').matches
+            ? 'light'
+            : 'dark';
+        var resolved = override || systemPref;
+        document.documentElement.classList.toggle('dark', resolved === 'dark');
+        if (metaTheme) {
+          metaTheme.content = resolved === 'light' ? '#f8f9fc' : '#040117';
+        }
+      } catch (e) {}
+    </script>
     <meta
       name="description"
       content="Knowledge Cartographer turns scattered project specs, diagrams, spreadsheets and notes into a cited knowledge base and a human-approved decision graph."

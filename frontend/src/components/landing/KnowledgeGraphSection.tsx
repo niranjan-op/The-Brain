@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   DECISION_CLUSTERS,
   DECISION_GRAPH_EDGES,
@@ -14,33 +15,33 @@ const KIND_STYLES: Record<
   { stroke: string; badgeBg: string; label: string }
 > = {
   decision: {
-    stroke: '#af63ff',
-    badgeBg: 'rgba(175, 99, 255, 0.16)',
+    stroke: '#7c5cff',
+    badgeBg: 'rgba(124, 92, 255, 0.16)',
     label: 'Decision',
   },
   replaced: {
-    stroke: '#cc9cff',
-    badgeBg: 'rgba(204, 156, 255, 0.16)',
+    stroke: '#c7b8ff',
+    badgeBg: 'rgba(199, 184, 255, 0.16)',
     label: 'Replaced decision',
   },
   document: {
-    stroke: '#a4a1ff',
-    badgeBg: 'rgba(164, 161, 255, 0.16)',
+    stroke: '#a9d2ff',
+    badgeBg: 'rgba(169, 210, 255, 0.16)',
     label: 'Source file',
   },
   evidence: {
-    stroke: '#14f194',
-    badgeBg: 'rgba(20, 241, 148, 0.16)',
+    stroke: '#6ee7b7',
+    badgeBg: 'rgba(110, 231, 183, 0.16)',
     label: 'Evidence passage',
   },
   component: {
-    stroke: '#cdc2ed',
-    badgeBg: 'rgba(205, 194, 237, 0.16)',
+    stroke: '#62d8e8',
+    badgeBg: 'rgba(98, 216, 232, 0.16)',
     label: 'System component',
   },
   artifact: {
-    stroke: '#f5f7ff',
-    badgeBg: 'rgba(245, 247, 255, 0.16)',
+    stroke: '#eef0fb',
+    badgeBg: 'rgba(238, 240, 251, 0.16)',
     label: 'Generated document',
   },
   question: {
@@ -55,20 +56,20 @@ const RELATIONSHIP_STYLES: Record<
   { color: string; dash?: string; markerId: string }
 > = {
   'replaces': {
-    color: '#cc9cff',
+    color: '#c7b8ff',
     dash: '6 4',
     markerId: 'arrow-violet',
   },
   'backed by': {
-    color: '#14f194',
+    color: '#6ee7b7',
     markerId: 'arrow-emerald',
   },
   'cites': {
-    color: '#af63ff',
+    color: '#7c5cff',
     markerId: 'arrow-cyan',
   },
   'from': {
-    color: '#a4a1ff',
+    color: '#a9d2ff',
     dash: '3 3',
     markerId: 'arrow-ice',
   },
@@ -78,26 +79,29 @@ const RELATIONSHIP_STYLES: Record<
     markerId: 'arrow-amber',
   },
   'references': {
-    color: '#cdc2ed',
+    color: '#62d8e8',
     markerId: 'arrow-cyan',
   },
   'informs': {
-    color: '#cc9cff',
+    color: '#c7b8ff',
     dash: '4 3',
     markerId: 'arrow-violet',
   },
 }
 
 export function KnowledgeGraphSection(): React.ReactElement {
-  const [isConnected, setIsConnected] = useState<boolean>(false)
+  const [isConnected, setIsConnected] = useState<boolean>(true)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null)
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(false)
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  )
 
   // Check for reduced motion preference
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setPrefersReducedMotion(mediaQuery.matches)
     const handler = (e: MediaQueryListEvent): void => {
       setPrefersReducedMotion(e.matches)
     }
@@ -200,27 +204,33 @@ export function KnowledgeGraphSection(): React.ReactElement {
         </div>
 
         {/* Transformation Toggle */}
-        <div className="kg-toggle-wrapper" data-reveal="up">
-          <div className="kg-toggle-control" role="group" aria-label="Toggle between scattered files and connected map view">
-            <button
-              type="button"
-              className={`kg-toggle-btn ${!isConnected ? 'is-active' : ''}`}
-              onClick={() => setIsConnected(false)}
-              aria-pressed={!isConnected}
-            >
-              <span className="kg-toggle-icon kg-toggle-scattered" aria-hidden="true" />
+        <div className="kg-toggle-wrapper">
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            value={isConnected ? 'connected' : 'scattered'}
+            onValueChange={(val) => {
+              if (val === 'connected') setIsConnected(true)
+              if (val === 'scattered') setIsConnected(false)
+            }}
+            aria-label="Toggle between scattered files and connected map view"
+            className="rounded-xl border border-white/14 bg-[#0b0d1b]/80 p-1 backdrop-blur-xl"
+          >
+            <ToggleGroupItem value="scattered" className="gap-2 px-3.5 text-xs">
+              <span
+                className="kg-toggle-icon kg-toggle-scattered"
+                aria-hidden="true"
+              />
               Scattered files
-            </button>
-            <button
-              type="button"
-              className={`kg-toggle-btn ${isConnected ? 'is-active' : ''}`}
-              onClick={() => setIsConnected(true)}
-              aria-pressed={isConnected}
-            >
-              <span className="kg-toggle-icon kg-toggle-connected" aria-hidden="true" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="connected" className="gap-2 px-3.5 text-xs">
+              <span
+                className="kg-toggle-icon kg-toggle-connected"
+                aria-hidden="true"
+              />
               Connected map
-            </button>
-          </div>
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
 
         {/* Graph Visualization */}

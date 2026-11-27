@@ -63,23 +63,33 @@ section[id] {
   outline-offset: 3px;
 }
 
-/* Skip link for keyboard navigation */
-.skip-link {
-  position: absolute;
-  top: -3.5rem;
-  left: var(--space-4);
-  z-index: 999;
-  padding: var(--space-2) var(--space-4);
-  background: var(--ink-primary);
-  color: var(--bg-void);
+/* Skip link for keyboard navigation: visually hidden until focused, fixed so layout never shifts */
+.skip-link:where(:not(:focus-visible, :focus-within, :active)) {
+  position: absolute !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  white-space: nowrap !important;
+}
+
+.skip-link:focus-visible,
+.skip-link:focus {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 120;
+  padding: 0.5rem 0.95rem;
+  background: var(--primary, #38bdf8);
+  color: var(--primary-foreground, #040117);
+  font-size: 0.875rem;
   font-weight: 600;
   border-radius: var(--radius-sm);
   text-decoration: none;
-  transition: top var(--duration-fast) var(--ease-out-expo);
-}
-
-.skip-link:focus {
-  top: var(--space-3);
+  box-shadow: var(--shadow-elevated);
 }
 
 h1,

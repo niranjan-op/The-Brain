@@ -207,7 +207,11 @@ def image_chunk(doc_uuid: str, filename: str, label: ImageLabel, storage_path: s
 
     text_body = f"{embed_body}\n\n```mermaid\n{label.mermaid}\n```" if label.mermaid else embed_body
     text_hash = hashlib.sha256(embed_body.encode()).hexdigest()
-    payload: dict[str, str | bool] = {"doc_kind": label.doc_kind}
+    payload: dict[str, str | bool | int] = {
+        "doc_kind": label.doc_kind,
+        "para_start": 1,
+        "para_end": 1,
+    }
     if label.mermaid:
         payload["mermaid"] = label.mermaid
     elif label.doc_kind == "architecture_diagram":

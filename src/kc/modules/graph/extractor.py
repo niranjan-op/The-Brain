@@ -278,15 +278,20 @@ async def extract_and_sync_document_graph(
             logger.warning("Skipping extracted edge %r -> %r: %s", edge.src_name, edge.dst_name, exc)
 
     synced_count = 0
-    try:
-        if not _AURA_SCHEMA_INITIALIZED:
+    if not _AURA_SCHEMA_INITIALIZED:
+        try:
             await init_aura_schema()
             _AURA_SCHEMA_INITIALIZED = True
+        except AuraUnavailableError as exc:
+            logger.warning("Aura schema init skipped for project %s: %s", project_uuid, exc)
+    try:
         sync_res = await sync_project_to_aura(str(project_uuid))
         synced_count = int(sync_res.get("applied", 0))
-    except AuraUnavailableError:
-        # Changes remain safely in Postgres `graph_changes` for next sync
-        pass
+    except AuraUnavailableError as exc:
+        # Changes remain safely in Postgres `graph_changes`; the next successful sync replays them.
+        logger.warning(
+            "Neo4j sync deferred for project %s (doc %s): %s", project_uuid, doc_uuid, exc
+        )
 
     return {
         "nodes_processed": nodes_processed,

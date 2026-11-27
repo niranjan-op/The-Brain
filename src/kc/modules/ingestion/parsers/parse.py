@@ -1,12 +1,15 @@
 from sqlalchemy import text
+from src.kc.core.config import settings
 from src.kc.core.db import SessionLocal
 
 async def claim(worker_id: str):
+    # Lease must outlast a full ingest (Docling on large PDFs can exceed 5 min); otherwise a
+    # sibling worker's reap() requeues a still-running job and it gets processed twice.
     async with SessionLocal() as session:
         row = (await session.execute(text("""
               UPDATE jobs
               SET status = 'running', locked_by = :w,
-                  locked_until = now() + interval '5 minutes',
+                  locked_until = now() + make_interval(secs => :lease),
                   attempts = attempts + 1,
                   started_at = coalesce(started_at, now())
               WHERE job_id = (
@@ -17,7 +20,7 @@ async def claim(worker_id: str):
                   FOR UPDATE SKIP LOCKED
               )
               RETURNING job_id, project_uuid, user_uuid, doc_uuid, type, payload, attempts, max_attempts
-          """), {"w": worker_id})).mappings().first()
+          """), {"w": worker_id, "lease": settings.worker_lease_seconds})).mappings().first()
         await session.commit()
         return row          # None when the queue is empty
 

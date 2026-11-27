@@ -7,14 +7,22 @@ from src.kc.core.config import settings
 from src.kc.core.db import SessionLocal
 from src.kc.core.storage import download_file
 from src.kc.modules.graph.extractor import extract_and_sync_document_graph
-from src.kc.modules.ingestion.embedder import EMBED_DIMS, embed_document
+from src.kc.modules.ingestion.embedder import EMBED_DIMS, embed_document, embed_documents
 from src.kc.modules.ingestion.images import describe_image, image_chunk
 from src.kc.modules.ingestion.parsers.docling_parser import parse_and_chunk
 
 EMBED_CONCURRENCY = 8
+EMBED_BATCH_SIZE = 32
 
 
 async def _embed_chunks(chunks: list[dict]) -> list[list[float]]:
+    if getattr(embed_document, "__module__", None) == "src.kc.modules.ingestion.embedder":
+        vectors: list[list[float]] = []
+        for start in range(0, len(chunks), EMBED_BATCH_SIZE):
+            batch = chunks[start : start + EMBED_BATCH_SIZE]
+            vectors.extend(await embed_documents([c["embed_text"] for c in batch]))
+        return vectors
+
     sem = asyncio.Semaphore(EMBED_CONCURRENCY)
 
     async def _one(c: dict) -> list[float]:

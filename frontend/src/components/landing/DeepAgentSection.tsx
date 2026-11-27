@@ -1,27 +1,5 @@
 import React, { useState } from 'react'
-
-/**
- * ============================================================================
- * DEEP AGENT GUI SHOWCASE & FUTURE DROP-IN SLOT (`DeepAgentSection.tsx`)
- * ============================================================================
- *
- * HOW TO SWAP IN YOUR FINAL AGENT SCREENSHOT OR LIVE FRONTEND COMPONENT LATER:
- *
- * 1. Static Screenshot / Video Drop-in:
- *    - Place your screenshot or WebM recording in `frontend/public/agent-gui-preview.png`
- *    - Set `AGENT_GUI_CUSTOM_IMAGE_URL = '/agent-gui-preview.png'` below, OR
- *      replace the contents of `[data-agent-gui-slot="stage"]` with an `<img>` / `<video>`.
- *
- * 2. Live React Agent Layout Drop-in:
- *    - When you build the production `/projects/:id/research` Agent Workspace UI,
- *      import it here and mount it inside `[data-agent-gui-slot="live-mount"]`.
- *    - Backend tables backing this UI (already migrated in Alembic `c1a000000003`):
- *      - `research_runs` (`plan`, `status`, `steps_used`, `searches_used`, `search_budget`, `lease_until`, `last_heartbeat_at`)
- *      - `search_cache` & `search_limits` (`provider`: `vertex` | `serpapi`)
- *      - `artifacts` & `artifact_versions` (`type`: `architecture_plan` | `prd` | `adr` | `report` | `diagram`, `source_refs`)
- *      - `project_members` & `invites` (`owner` | `edit` | `view`, max 4 members/project)
- * ============================================================================
- */
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 
 const AGENT_GUI_CUSTOM_IMAGE_URL: string | null = null
 
@@ -61,163 +39,163 @@ interface AgentDemoSession {
 const AGENT_DEMO_SESSIONS: AgentDemoSession[] = [
   {
     id: 'sess-storage-adr',
-    folder: 'storage-arch',
-    title: 'Storage Migration Deep Research & ADR-004',
+    folder: 'project-plan',
+    title: 'Check New Upload Against Agreed Plan',
     timeLabel: 'Just now',
-    statusText: 'Step 5/6 · ADR ready for review',
+    statusText: 'Step 5/6 · Summary ready for review',
     statusKind: 'review',
-    badges: ['#D016', '#ADR-004', '3/8 searches'],
+    badges: ['Page Proof', 'Conflict Check', '3/8 web searches'],
     promptTitle:
-      'Verify whether our new PDF upload conflicts with agreed storage decisions & draft ADR-004',
+      'Check if our newly uploaded draft conflicts with our current project plan and write a 1-page summary',
     narrativeLead:
-      'Deep Agent cross-checked 4 scoped project files against 7 agreed Decision nodes and ran 3 budgeted web searches on Postgres 17 HNSW + BM25 memory overhead.',
+      'Compared 4 selected project files against your agreed decisions and ran 3 live web searches to verify external facts.',
     narrativeSub:
-      'Every claim is pinned to an exact document chunk or graph node. Proposed graph updates are paused at the Human Approval Gate until an owner approves.',
+      'Every statement links to an exact page number. Suggested updates wait for your approval before changing your shared decision map.',
     inlineEvents: [
       {
-        code: '1 — SOURCE SCOPE ENFORCED (RECOMMENDED)',
-        badge: 'Scope check passed',
+        code: '1 — SELECTED FILES CHECKED',
+        badge: '4 files included',
         tone: 'emerald',
-        title: 'Scoped retrieval locked to 4 active files',
-        detail: '1 unticked draft excluded from vector, BM25, and graph read tools',
-        meta: 'scope: 4/5 docs · RRF k=60',
+        title: 'Searching only the 4 files you ticked',
+        detail: '1 older draft was unticked and excluded from this run',
+        meta: '4 of 5 files active',
       },
       {
-        code: '2 — CONTRADICTION FLAGGED ON UPLOAD',
-        badge: 'Conflict detected',
+        code: '2 — CONTRADICTION SPOTTED',
+        badge: 'Conflict found',
         tone: 'amber',
-        title: 'legacy-firestore-proposal.pdf (p. 3) contradicts agreed Decision D016',
-        detail: 'Non-destructive flag raised — existing Decision Graph was not overwritten',
-        meta: 'cosine 0.89 vs node:D016',
+        title: 'old-proposal-draft.pdf (Page 3) disagrees with your current plan',
+        detail: 'Highlighted for review—your existing decision map was not overwritten',
+        meta: 'Page 3 vs Page 2',
       },
       {
-        code: '3 — HUMAN APPROVAL GATE',
-        badge: 'Awaiting owner approval',
+        code: '3 — READY FOR YOUR APPROVAL',
+        badge: 'Waiting for review',
         tone: 'cyan',
-        title: 'Drafted ADR-004 v2 and queued SUPERSEDES edge for confirmation',
-        detail: 'Approve below to commit to Postgres graph_changes & sync to Neo4j',
-        meta: 'tx: graph_gateway · 0 unverified refs',
+        title: 'Drafted Project-Decision-Summary.md with 4 page citations',
+        detail: 'Approve to update your shared map and export to Markdown',
+        meta: '4/4 page links verified',
       },
     ],
-    artifactFile: 'ADR-004-Storage-Plan.md',
-    artifactTag: 'ADR #004 · v2',
-    artifactTitle: 'feat(adr): formalize self-hosted Postgres 17 + LIST partitions over managed tier',
-    artifactSummary: 'artifact_versions.v2 · status: draft → final · 4 verified citations',
+    artifactFile: 'Project-Decision-Summary.md',
+    artifactTag: 'SUMMARY · v2',
+    artifactTitle: 'Updated Project Plan & Contradiction Review',
+    artifactSummary: 'Version 2 · Ready to export · 4 verified page citations',
     artifactStats: { files: 2, added: 48, removed: 12, checks: '4/4 citations verified' },
-    sourceRefs: ['node:D016', 'node:D015', 'chk_8c41a2 (p.2)', 'chk_19f0e4 (fig.1)'],
-    terminalTool: 'why_decision & hybrid_rrf_search',
-    terminalToolArgs: 'toolName=why_decision("D016") · search_budget=3/8 · scope=4_docs',
+    sourceRefs: ['project-plan-v2.pdf (p.2)', 'team-notes.md (p.2)', 'research-report.pdf (p.12)', 'system-overview.png (Fig.1)'],
+    terminalTool: 'Cross-Checking Files & Decisions',
+    terminalToolArgs: 'Checking 4 selected files · 3 of 8 web searches used',
     terminalPrompt:
-      'Synthesize Postgres 17 partition benchmarks and Decision D016 provenance into versioned artifact ADR-004-Storage-Plan.md with inline [chunk_id] citations.',
-    terminalStatus: 'Thinking... (esc to pause · 60s lease heartbeat active)',
+      'Combine the findings from project-plan-v2.pdf and team-notes.md into a clean summary with clickable page numbers.',
+    terminalStatus: 'Waiting for your review (you can pause or steer anytime)',
     searchesUsed: '3 / 8 web searches',
     stepsUsed: 'Step 5 / 6',
   },
   {
     id: 'sess-vpc-spike',
-    folder: 'cloud-network',
-    title: 'Open Question Q04: VPC Egress vs. Cloud Bucket',
+    folder: 'literature-review',
+    title: 'Compare Options & Gather Web Evidence',
     timeLabel: '14m ago',
-    statusText: 'Thinking... · 4/8 web searches',
+    statusText: 'Researching... · 4/8 web searches',
     statusKind: 'thinking',
-    badges: ['#Q04', '#SVC-WORKER', '4/8 searches'],
+    badges: ['Open Question', 'Web + Files', '4/8 searches'],
     promptTitle:
-      'Compare Direct VPC Egress vs. GCS Bundle Handoff for the 4 GB Background File Parser',
+      'Compare our two shortlisted options using our uploaded slides and current web benchmarks',
     narrativeLead:
-      'Investigating Open Question Q04 by combining internal Cloud Run worker specs with live Google Cloud pricing documentation via cached Vertex Grounding.',
+      'Combining your uploaded lecture slides and meeting notes with live web sources to answer an open team question.',
     narrativeSub:
-      'Run holds an active 900s worker lease with 60s heartbeat updates so you can pause, steer, or resume without losing intermediate citations.',
+      'You can pause the research run at any step, add a follow-up instruction, or resume without losing progress.',
     inlineEvents: [
       {
-        code: '1 — GRAPH READ TOOL EXECUTED',
-        badge: 'open_questions()',
+        code: '1 — OPEN QUESTION LOADED',
+        badge: 'Open question',
         tone: 'cyan',
-        title: 'Loaded Open Question Q04 and dependent node D016',
-        detail: 'Traced dependency between 4 GB Docling Worker Job and VM Postgres 17',
-        meta: 'path: Q04 -> D016 -> SVC-WORKER',
+        title: 'Found unresolved question from Tuesday’s meeting notes',
+        detail: 'Linked related slides and cost spreadsheet rows automatically',
+        meta: 'team-notes.md · Page 3',
       },
       {
-        code: '2 — BUDGETED WEB SEARCH (CACHED)',
-        badge: 'search_cache hit',
+        code: '2 — LIVE WEB CHECK',
+        badge: 'Web source verified',
         tone: 'emerald',
-        title: 'Queried Cloud Run Job Direct VPC egress pricing & NAT rules',
-        detail: 'Deduplicated via 24h search_cache to save daily search_limits quota',
-        meta: 'provider: vertex · budget: 4/8',
+        title: 'Pulled latest published comparison numbers from the web',
+        detail: 'Kept web sources separate from your private uploaded files',
+        meta: '4 of 8 web searches used',
       },
       {
-        code: '3 — ARTIFACT DRAFT STREAMING',
-        badge: 'Report v1 draft',
+        code: '3 — DRAFTING COMPARISON REPORT',
+        badge: 'Draft v1',
         tone: 'amber',
-        title: 'Compiling cost & latency comparison table with source_refs',
-        detail: 'Proposing new Decision node D025 to close Open Question Q04',
-        meta: 'type: report · status: draft',
+        title: 'Building side-by-side pros, cons, and page citations',
+        detail: 'Suggesting a new decision card to close your open question',
+        meta: 'Report draft in progress',
       },
     ],
-    artifactFile: 'Report-Q04-Network-Spike.md',
-    artifactTag: 'REPORT #009 · v1',
-    artifactTitle: 'docs(spike): benchmark Direct VPC egress vs GCS bundle handoff for worker',
-    artifactSummary: 'artifact_versions.v1 · status: draft · 5 verified citations',
+    artifactFile: 'Option-Comparison-Report.md',
+    artifactTag: 'REPORT · v1',
+    artifactTitle: 'Side-by-Side Option Comparison & Recommendation',
+    artifactSummary: 'Version 1 · Draft · 5 verified page & web citations',
     artifactStats: { files: 1, added: 64, removed: 0, checks: '5/5 citations verified' },
-    sourceRefs: ['node:Q04', 'node:D016', 'chk_19f0e4 (fig.1)', 'web:gcp-vpc-pricing'],
-    terminalTool: 'web_search_grounded',
-    terminalToolArgs: 'provider=vertex · query="Cloud Run Job Direct VPC egress cost" · cache=hit',
+    sourceRefs: ['team-notes.md (p.3)', 'research-report.pdf (p.14)', 'system-overview.png (Fig.1)', 'Web Benchmark'],
+    terminalTool: 'Searching Files + Live Web',
+    terminalToolArgs: 'Querying uploaded PDFs and verified web sources',
     terminalPrompt:
-      'Compare monthly fixed cost of Cloud Run Direct VPC egress against GCS signed-bundle handoff for 50-page PDF ingestion jobs.',
-    terminalStatus: 'Thinking... (esc to pause · step 4 of 6 running)',
+      'Build a clear comparison table showing cost, setup time, and trade-offs from our uploaded notes and web sources.',
+    terminalStatus: 'Researching... (Step 4 of 6 running)',
     searchesUsed: '4 / 8 web searches',
     stepsUsed: 'Step 4 / 6',
   },
   {
     id: 'sess-table-prd',
-    folder: 'ingestion-core',
-    title: 'Spreadsheet & Diagram Extraction Architecture Plan',
+    folder: 'final-report',
+    title: 'Summarize Tables & Diagrams into Study Guide',
     timeLabel: 'Yesterday',
-    statusText: 'Completed · Exported Plan v2',
+    statusText: 'Completed · Exported Markdown',
     statusKind: 'done',
-    badges: ['#D007', '#Plan-v2', 'Completed'],
+    badges: ['Tables & Figures', 'Exported', 'Completed'],
     promptTitle:
-      'Generate an Architecture Plan for indexing multi-page PDF tables and diagrams without chunk bloat',
+      'Turn our 24-page report, spreadsheets, and whiteboard diagrams into a cited study & briefing guide',
     narrativeLead:
-      'Synthesized Decision D007 (compact triplet tables) and the 41-page engineering report benchmark into a final Architecture Plan artifact.',
+      'Extracted key takeaways from 10 tables and 5 diagrams across your report and organized them into a clean Markdown document.',
     narrativeSub:
-      'Exported to clean Markdown with immutable version history so all 4 project collaborators can inspect the exact source pages.',
+      'Shared with all 4 project members so everyone can click any claim and jump straight to the original page.',
     inlineEvents: [
       {
-        code: '1 — TABLE TRIPLET VERIFICATION',
-        badge: 'Decision D007',
+        code: '1 — TABLES & SPREADSHEETS READ',
+        badge: '10 tables read',
         tone: 'emerald',
-        title: 'Verified 118 deduplicated chunks & 10 tables from report-1-half.pdf',
-        detail: 'Confirmed sanity guard: chunks/page <= 30 and 0 duplicate chunk_ids',
-        meta: 'chk_4b12d9 · pp. 11–14',
+        title: 'Extracted every row and column from research-report.pdf',
+        detail: 'Kept exact numbers intact and linked to Pages 11–14',
+        meta: 'Pages 11–14 verified',
       },
       {
-        code: '2 — VISION DIAGRAM DESCRIPTIONS',
-        badge: 'Gemini Flash-Lite',
+        code: '2 — DIAGRAMS DESCRIBED',
+        badge: '5 figures indexed',
         tone: 'cyan',
-        title: 'Indexed 5 architecture diagrams with semantic descriptions',
-        detail: 'Capped at 10 figures per document with non-blocking fallback',
-        meta: 'doc_kind: architecture_diagram',
+        title: 'Read 5 architecture and workflow diagrams',
+        detail: 'Made every label inside your uploaded images searchable',
+        meta: 'Figures 1–5 verified',
       },
       {
-        code: '3 — ARTIFACT FINALIZED & EXPORTED',
+        code: '3 — EXPORTED TO MARKDOWN',
         badge: 'Final v2',
         tone: 'emerald',
-        title: 'Published Architecture-Plan-Ingestion-v2.md to team workspace',
-        detail: 'Shared with 4 project members (owner, edit, view roles)',
-        meta: 'artifact_versions: v2 (final)',
+        title: 'Saved Final-Briefing-Guide.md to shared workspace',
+        detail: 'Ready to download or share with your team',
+        meta: 'Version 2 (Final)',
       },
     ],
-    artifactFile: 'Architecture-Plan-Ingestion-v2.md',
-    artifactTag: 'PLAN #002 · v2',
-    artifactTitle: 'feat(plan): finalize Docling TableFormer triplet + Gemini vision pipeline',
-    artifactSummary: 'artifact_versions.v2 · status: final · 6 verified citations',
+    artifactFile: 'Final-Briefing-Guide.md',
+    artifactTag: 'GUIDE · v2',
+    artifactTitle: 'Complete Project Briefing & Table Summary',
+    artifactSummary: 'Version 2 · Final · 6 verified page citations',
     artifactStats: { files: 3, added: 92, removed: 18, checks: '6/6 citations verified' },
-    sourceRefs: ['node:D007', 'chk_4b12d9 (p.11)', 'chk_55c8e1 (Table 3.1)', 'chk_91e3b0 (p.1)'],
-    terminalTool: 'export_artifact_markdown',
-    terminalToolArgs: 'artifactType=architecture_plan · version=2 · status=final',
+    sourceRefs: ['research-report.pdf (p.11)', 'Table 3.1 (p.12)', 'system-overview.png (Fig.1)', 'project-plan-v2.pdf (p.1)'],
+    terminalTool: 'Exporting Clean Markdown',
+    terminalToolArgs: 'Format: Markdown with page links · Status: Complete',
     terminalPrompt:
-      'Export finalized Architecture Plan v2 with embedded source_refs and notify shared project workspace.',
-    terminalStatus: 'Run completed · 2/8 web searches used · All citations verified',
+      'Export finalized briefing guide with clickable page references for all 4 project teammates.',
+    terminalStatus: 'Completed · 2/8 web searches used · 100% cited',
     searchesUsed: '2 / 8 web searches',
     stepsUsed: 'Step 6 / 6 (Done)',
   },
@@ -225,32 +203,32 @@ const AGENT_DEMO_SESSIONS: AgentDemoSession[] = [
 
 const COMPLETE_PROJECT_PILLARS = [
   {
-    code: '01 // DEEP RESEARCH AGENT',
-    title: 'Budgeted Multi-Step Research Runs',
+    code: '01 // DEEP RESEARCH',
+    title: 'Multi-Step Research Across Files & Web',
     summary:
-      'Plans and executes multi-step investigations combining your private document chunks, Decision Graph tools, and live web search (capped at 8 searches/run) with 60s heartbeat leases you can pause, steer, and resume.',
-    meta: 'Tables: research_runs · search_cache · search_limits',
+      'Give it a big question and let it read your selected files, check your decision map, and run up to 8 live web searches—while you pause, steer, or resume anytime.',
+    meta: 'Files + Decision Map + Live Web',
   },
   {
-    code: '02 // CONFLICT DETECTION',
-    title: 'Non-Destructive Upload Conflict Guards',
+    code: '02 // CONTRADICTION ALERTS',
+    title: 'Catches Conflicts Before They Cause Mistakes',
     summary:
-      'When a newly uploaded PDF or spec contradicts an agreed Decision, the agent never overwrites your graph automatically—it flags the exact page and drafts a scoped SUPERSEDES proposal for human review.',
-    meta: 'Tables: nodes · edges · evidence · graph_changes',
+      'When a new PDF or slide deck disagrees with something your team already decided, it highlights the exact page instead of silently overwriting your work.',
+    meta: 'Automatic Page-Level Conflict Checks',
   },
   {
-    code: '03 // ARTIFACT STUDIO',
-    title: 'Versioned ADRs, Plans, PRDs & Reports',
+    code: '03 // ONE-CLICK REPORTS',
+    title: 'Turn Chats into Cited Reports & Study Guides',
     summary:
-      'Turn any research run or decision thread into versioned Architecture Plans, ADRs, PRDs, Reports, and Diagrams (draft → final) where every section pins its exact chunk and node source_refs and exports to Markdown.',
-    meta: 'Tables: artifacts · artifact_versions',
+      'Generate clean project plans, decision logs, and briefing reports where every section links back to the exact page or diagram that backs it up.',
+    meta: 'Instant Markdown Export',
   },
   {
-    code: '04 // TEAM WORKSPACES & BYOK',
-    title: '4-Member Collaboration & Zero-Lockout BYOK',
+    code: '04 // BUILT FOR SMALL TEAMS',
+    title: 'Share with up to 4 Teammates',
     summary:
-      'Invite up to 4 teammates per project with owner, edit, or view roles and shared or private conversation threads. When daily managed quota runs out, switch to your own browser-stored API key with zero lockout.',
-    meta: 'Tables: project_members · invites · usage_ledger',
+      'Keep private solo notes or collaborate in shared project threads. If you ever use up your daily free questions, plug in your own API key in the browser with zero lockout.',
+    meta: 'Solo or Team · Zero Lockout',
   },
 ]
 
@@ -273,59 +251,38 @@ export function DeepAgentSection(): React.ReactElement {
   return (
     <section id="deep-agent" className="deep-agent-section">
       <div className="container">
-        <div className="section-header-row" data-reveal="up">
+        <div className="section-header-row">
           <div className="section-header-copy">
-            <div className="kg-dataset-meta-row">
-              <span className="kg-meta-tag mono">
-                Autonomous Deep Research Agent
-              </span>
-              <span className="kg-meta-divider" aria-hidden="true">
-                ·
-              </span>
-              <span className="kg-meta-dataset mono">
-                Multi-Step Planning · Scoped Docs + Web Search · Versioned ADRs
-              </span>
-            </div>
             <h2 className="section-heading">
-              Meet the Deep Agent that researches, checks conflicts, and writes your ADRs.
+              Deep research that reads your files and writes cited reports.
             </h2>
             <p className="section-description">
-              Beyond visual mapping, Knowledge Cartographer runs an autonomous
-              Deep Research Agent that cross-examines your uploaded files, your
-              team&apos;s Decision Graph, and live web search—pausing for your
-              approval before changing the graph or publishing a document.
+              When a simple chat isn&apos;t enough, launch a multi-step research
+              run that cross-checks your documents, spots contradictions, and
+              drafts clean Markdown reports for your review.
             </p>
           </div>
 
-          <div
-            className="agent-view-mode-switch"
-            role="group"
-            aria-label="Agent GUI preview mode"
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            size="sm"
+            value={viewMode}
+            onValueChange={(v) => {
+              if (v === 'interactive' || v === 'skeleton') setViewMode(v)
+            }}
+            aria-label="Research preview mode"
+            className="rounded-xl border border-border bg-card/85 p-1 backdrop-blur-xl"
           >
-            <button
-              type="button"
-              className={`cluster-pill ${viewMode === 'interactive' ? 'is-active' : ''}`}
-              onClick={() => setViewMode('interactive')}
-            >
-              Interactive Agent GUI
-            </button>
-            <button
-              type="button"
-              className={`cluster-pill ${viewMode === 'skeleton' ? 'is-active' : ''}`}
-              onClick={() => setViewMode('skeleton')}
-            >
-              Future Drop-in Slot
-            </button>
-          </div>
+            <ToggleGroupItem value="interactive" className="text-xs px-3">
+              Interactive Preview
+            </ToggleGroupItem>
+            <ToggleGroupItem value="skeleton" className="text-xs px-3">
+              Layout Overview
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
 
-        {/* ====================================================================
-            AGENT_GUI_STAGE_CONTAINER:
-            Modeled after the Kiro-style multi-pane session + overlapping live
-            terminal layout. When your production Agent UI or screenshot is ready,
-            set `AGENT_GUI_CUSTOM_IMAGE_URL` at the top of this file or mount your
-            component inside `[data-agent-gui-slot="stage"]`.
-           ==================================================================== */}
         <div
           className="agent-showcase-stage"
           data-agent-gui-slot="stage"
@@ -338,7 +295,6 @@ export function DeepAgentSection(): React.ReactElement {
               className="agent-custom-screenshot"
             />
           ) : viewMode === 'skeleton' ? (
-            /* Explicit Developer Arrangement / Drop-in Skeleton Slot */
             <div
               className="agent-skeleton-arrangement"
               data-agent-gui-slot="live-mount"
@@ -346,42 +302,35 @@ export function DeepAgentSection(): React.ReactElement {
               <div className="agent-skeleton-grid">
                 <div className="agent-skeleton-window">
                   <div className="agent-skeleton-badge mono">
-                    SLOT A // MAIN 3-PANE AGENT WORKSPACE GUI (1200×680)
+                    3-PANE RESEARCH WORKSPACE
                   </div>
                   <h3 className="agent-skeleton-title">
-                    Ready for your live Agent Frontend or screenshot drop-in
+                    How the Deep Research workspace is organized
                   </h3>
                   <p className="agent-skeleton-copy">
-                    Edit{' '}
-                    <code>
-                      frontend/src/components/landing/DeepAgentSection.tsx
-                    </code>{' '}
-                    and set <code>AGENT_GUI_CUSTOM_IMAGE_URL</code> to drop in a
-                    screenshot, or mount your live React{' '}
-                    <code>&lt;DeepResearchWorkspace /&gt;</code> component
-                    directly inside{' '}
-                    <code>[data-agent-gui-slot=&quot;live-mount&quot;]</code>.
+                    Everything stays in one clear view so you can follow every
+                    step from question to finished report.
                   </p>
                   <div className="agent-skeleton-wireframes">
                     <div className="skeleton-col">
-                      <span className="mono">Left Pane (240px)</span>
-                      <strong>Research Sessions List</strong>
+                      <span className="mono">Left Column</span>
+                      <strong>Your Research Runs</strong>
                       <small className="mono">
-                        research_runs · status: running | paused | completed
+                        Switch between active and completed topics
                       </small>
                     </div>
                     <div className="skeleton-col">
-                      <span className="mono">Center Pane (Flex)</span>
-                      <strong>Reasoning Stream &amp; Guard Cards</strong>
+                      <span className="mono">Center Column</span>
+                      <strong>Step-by-Step Progress</strong>
                       <small className="mono">
-                        Source scope filter · Conflict flags · Human approval gate
+                        See which files were checked and any conflicts found
                       </small>
                     </div>
                     <div className="skeleton-col">
-                      <span className="mono">Right Pane (300px)</span>
-                      <strong>Versioned Artifact Diff</strong>
+                      <span className="mono">Right Column</span>
+                      <strong>Generated Report &amp; Page Links</strong>
                       <small className="mono">
-                        artifacts + artifact_versions · Markdown export
+                        Review the draft and export to Markdown
                       </small>
                     </div>
                   </div>
@@ -389,35 +338,30 @@ export function DeepAgentSection(): React.ReactElement {
 
                 <div className="agent-skeleton-terminal">
                   <div className="agent-skeleton-badge mono">
-                    SLOT B // OVERLAPPING AGENT LIVE TRACE TERMINAL (540×360)
+                    LIVE PROGRESS MONITOR
                   </div>
                   <p className="agent-skeleton-copy">
-                    Streams real-time tool calls (<code>why_decision()</code>,{' '}
-                    <code>hybrid_rrf_search()</code>,{' '}
-                    <code>web_search_grounded()</code>), search budget meters (
-                    <code>searches_used / 8</code>), and 60s worker lease
-                    heartbeats.
+                    Shows which files and web sources are being checked in real
+                    time, with one-click Pause and Resume controls.
                   </p>
                   <button
                     type="button"
                     className="btn-primary btn-sm"
                     onClick={() => setViewMode('interactive')}
                   >
-                    Return to Interactive Agent GUI Preview
+                    Back to Interactive Preview
                   </button>
                 </div>
               </div>
             </div>
           ) : (
-            /* Live Interactive Multi-Pane Agent GUI + Overlapping Terminal Showcase */
             <div className="agent-composite-canvas">
-              {/* WINDOW 1: Main Desktop 3-Pane Agent Session GUI */}
+              {/* WINDOW 1: Main Desktop 3-Pane Session GUI */}
               <div
                 className="agent-desktop-window"
                 role="region"
-                aria-label="Deep Research Agent Desktop Interface"
+                aria-label="Deep Research Interface"
               >
-                {/* Top Window Titlebar */}
                 <div className="agent-window-titlebar">
                   <div className="agent-window-dots" aria-hidden="true">
                     <span className="win-dot win-dot-red" />
@@ -426,28 +370,26 @@ export function DeepAgentSection(): React.ReactElement {
                   </div>
 
                   <div className="agent-workspace-tabs mono">
-                    <span className="ws-tab">Local</span>
-                    <span className="ws-tab">Prod-Graph</span>
-                    <span className="ws-tab is-active">Deep Agent · 3</span>
+                    <span className="ws-tab">Files</span>
+                    <span className="ws-tab">Decision Map</span>
+                    <span className="ws-tab is-active">Deep Research · 3</span>
                   </div>
 
                   <div className="agent-command-search mono">
-                    ⌘K — Search sessions, decisions, or @files...
+                    Search your files, notes, or decisions...
                   </div>
 
                   <div className="agent-titlebar-right">
                     <span className="agent-collab-pill mono">
-                      4/4 Members · Shared
+                      4/4 Teammates · Shared
                     </span>
                     <span className="agent-feature-btn mono">
-                      + Generate ADR
+                      + Export Report
                     </span>
                   </div>
                 </div>
 
-                {/* 3-Pane Interior */}
                 <div className="agent-window-body">
-                  {/* Far-left Icon Rail */}
                   <div className="agent-icon-rail" aria-hidden="true">
                     <div className="rail-avatar">KC</div>
                     <span className="rail-dot is-active" />
@@ -456,22 +398,21 @@ export function DeepAgentSection(): React.ReactElement {
                     <span className="rail-dot" />
                   </div>
 
-                  {/* Left Pane: Sessions List */}
                   <aside
                     className="agent-sessions-sidebar"
-                    aria-label="Deep Agent Research Sessions"
+                    aria-label="Research Topics"
                   >
                     <div className="sessions-sidebar-header">
-                      <span className="sessions-heading">Sessions</span>
+                      <span className="sessions-heading">Research Topics</span>
                       <span className="sessions-new-btn mono">+ New</span>
                     </div>
 
                     <div className="sessions-search-box mono">
-                      Search research runs...
+                      Filter topics...
                     </div>
 
                     <div className="sessions-group-label mono">
-                      ▾ Active &amp; In Review
+                      ▾ Recent Runs
                     </div>
 
                     <div className="sessions-list" role="tablist">
@@ -515,7 +456,6 @@ export function DeepAgentSection(): React.ReactElement {
                     </div>
                   </aside>
 
-                  {/* Center Pane: Session Stream & Inline Event Cards */}
                   <div className="agent-session-stream" aria-live="polite">
                     <div className="stream-top-bar">
                       <h3 className="stream-session-title">
@@ -533,7 +473,6 @@ export function DeepAgentSection(): React.ReactElement {
                       {activeSession.narrativeSub}
                     </p>
 
-                    {/* Numbered Inline Safety & Provenance Event Cards */}
                     <div className="stream-events-stack">
                       {activeSession.inlineEvents.map((ev) => (
                         <div key={ev.code} className="stream-event-block">
@@ -558,7 +497,6 @@ export function DeepAgentSection(): React.ReactElement {
                       ))}
                     </div>
 
-                    {/* Steering Action Pills + Prompt Bar */}
                     <div className="stream-steering-footer">
                       <div className="stream-quick-Write-pills">
                         <button
@@ -567,8 +505,8 @@ export function DeepAgentSection(): React.ReactElement {
                           onClick={() => setAgentPaused((p) => !p)}
                         >
                           {agentPaused
-                            ? '▶ Resume Research Run'
-                            : '⏸ Pause Run & Steer'}
+                            ? '▶ Resume Research'
+                            : '⏸ Pause & Add Note'}
                         </button>
                         <button
                           type="button"
@@ -579,35 +517,32 @@ export function DeepAgentSection(): React.ReactElement {
                             )
                           }
                         >
-                          Mode: {credentialMode.toUpperCase()} (Switch)
+                          Plan: {credentialMode === 'managed' ? 'Included Daily' : 'Own API Key'}
                         </button>
                       </div>
 
                       <div className="stream-composer-box">
                         <span className="composer-placeholder">
-                          Message Deep Agent... (<code>/research</code> ·{' '}
-                          <code>@file</code> · <code>$why_decision</code>)
+                          Ask a follow-up question or tag a file...
                         </span>
                         <div className="composer-meta-row mono">
                           <span>⊞ {activeSession.folder}</span>
                           <span>
                             {credentialMode === 'managed'
-                              ? 'Managed Quota'
-                              : 'BYOK Browser Key'}{' '}
-                            · gemini-2.5-flash
+                              ? 'Included Daily Plan'
+                              : 'Own Browser Key'}
                           </span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Right Pane: Artifact / ADR Changes Preview */}
                   <aside
                     className="agent-artifact-sidebar"
-                    aria-label="Generated Artifact and Source References"
+                    aria-label="Generated Report and Page Citations"
                   >
                     <div className="artifact-sidebar-tabs mono">
-                      <span className="art-tab is-active">Changes</span>
+                      <span className="art-tab is-active">Draft Report</span>
                       <span className="art-tab">{activeSession.artifactFile}</span>
                     </div>
 
@@ -617,7 +552,7 @@ export function DeepAgentSection(): React.ReactElement {
                           {activeSession.artifactTag}
                         </span>
                         <span className="artifact-status-pill">
-                          verified
+                          100% cited
                         </span>
                       </div>
 
@@ -631,10 +566,7 @@ export function DeepAgentSection(): React.ReactElement {
                       <div className="artifact-diff-stats mono">
                         <span>Files {activeSession.artifactStats.files}</span>
                         <span className="diff-add">
-                          +{activeSession.artifactStats.added}
-                        </span>
-                        <span className="diff-del">
-                          -{activeSession.artifactStats.removed}
+                          +{activeSession.artifactStats.added} lines
                         </span>
                         <span className="diff-check">
                           ✓ {activeSession.artifactStats.checks}
@@ -643,7 +575,7 @@ export function DeepAgentSection(): React.ReactElement {
 
                       <div className="artifact-refs-box">
                         <div className="artifact-refs-label mono">
-                          PINNED SOURCE_REFS ({activeSession.sourceRefs.length})
+                          VERIFIED PAGE LINKS ({activeSession.sourceRefs.length})
                         </div>
                         <div className="artifact-refs-chips">
                           {activeSession.sourceRefs.map((ref) => (
@@ -658,11 +590,11 @@ export function DeepAgentSection(): React.ReactElement {
                 </div>
               </div>
 
-              {/* WINDOW 2: Overlapping Bottom-Right Live Agent Execution Terminal */}
+              {/* WINDOW 2: Overlapping Bottom-Right Live Progress Card */}
               <div
                 className="agent-terminal-window"
                 role="region"
-                aria-label="Deep Agent Live Tool Execution Terminal"
+                aria-label="Live Research Progress"
               >
                 <div className="terminal-titlebar">
                   <div className="agent-window-dots" aria-hidden="true">
@@ -671,27 +603,19 @@ export function DeepAgentSection(): React.ReactElement {
                     <span className="win-dot win-dot-green" />
                   </div>
                   <span className="terminal-title mono">
-                    Deep Agent Live Trace — research_runs · 80×24
+                    Live Research Progress
                   </span>
                 </div>
 
                 <div className="terminal-body mono">
                   <div className="terminal-welcome">
-                    Welcome to{' '}
                     <span className="term-accent-violet">
-                      Knowledge Cartographer Deep Agent!
+                      Deep Research Assistant
                     </span>
                   </div>
                   <div className="terminal-subwelcome">
-                    What&apos;s inside: Budgeted multi-step research, upload
-                    conflict guards, and one-click ADR synthesis grounded in your
-                    Decision Graph.
-                  </div>
-
-                  <div className="terminal-tip">
-                    Tip: Need to inspect raw SQL or graph hops? Run{' '}
-                    <span className="term-accent-cyan">/why_decision</span> or{' '}
-                    <span className="term-accent-cyan">/open_questions</span>!
+                    Reads your selected files, checks for contradictions, and
+                    writes a cited report you can export in one click.
                   </div>
 
                   <div className="terminal-tool-call">
@@ -709,34 +633,33 @@ export function DeepAgentSection(): React.ReactElement {
                   <div className="terminal-thinking-row">
                     <span className="term-thinking-text">
                       {agentPaused
-                        ? 'Run Paused (lease preserved · click Resume to continue)'
+                        ? 'Paused — click Resume whenever you are ready'
                         : activeSession.terminalStatus}
                     </span>
                   </div>
 
                   <div className="terminal-status-line">
                     <span>
-                      {credentialMode === 'managed' ? 'Managed' : 'BYOK'} ·
-                      Gemini 2.5 Pro · {activeSession.searchesUsed} ·{' '}
-                      <span className="term-green">● 100% cited</span>
+                      {activeSession.searchesUsed} ·{' '}
+                      <span className="term-green">● Every claim cited</span>
                     </span>
                     <span className="term-cloud-pill">
-                      ☁ Worker Lease Active
+                      ☁ Auto-Saved
                     </span>
                   </div>
 
                   <div className="terminal-footer-bar">
                     <span>
                       {agentPaused
-                        ? 'Agent is paused · Type to steer next step'
-                        : 'Deep Agent is working · Type to steer · Ctrl+S to checkpoint'}
+                        ? 'Research paused · Type to add instructions'
+                        : 'Click any topic on the left to switch examples'}
                     </span>
                     <button
                       type="button"
                       className="terminal-pause-btn mono"
                       onClick={() => setAgentPaused((p) => !p)}
                       aria-label={
-                        agentPaused ? 'Resume agent run' : 'Pause agent run'
+                        agentPaused ? 'Resume research' : 'Pause research'
                       }
                     >
                       {agentPaused ? '▶' : '⏸'}
@@ -750,21 +673,18 @@ export function DeepAgentSection(): React.ReactElement {
 
         <div className="agent-stage-caption">
           <span className="mono">
-            Interactive Deep Agent Preview · Click any session on the left or
-            toggle &ldquo;Future Drop-in Slot&rdquo; above when ready to drop in
-            your live Agent UI
+            Click any research topic on the left of the window above to see how
+            Knowledge Cartographer handles conflicts, web comparisons, and
+            tables.
           </span>
         </div>
 
-        {/* Complete Project Pillars: Explaining Everything We Haven't Covered Yet */}
         <div
           className="agent-pillars-grid"
-          data-reveal="stagger"
-          aria-label="Complete Knowledge Cartographer Capabilities"
+          aria-label="Key Highlights"
         >
           {COMPLETE_PROJECT_PILLARS.map((pillar) => (
             <article key={pillar.code} className="agent-pillar-card">
-              <span className="agent-pillar-code mono">{pillar.code}</span>
               <h3 className="agent-pillar-title">{pillar.title}</h3>
               <p className="agent-pillar-summary">{pillar.summary}</p>
               <span className="agent-pillar-meta mono">{pillar.meta}</span>
@@ -775,4 +695,3 @@ export function DeepAgentSection(): React.ReactElement {
     </section>
   )
 }
-

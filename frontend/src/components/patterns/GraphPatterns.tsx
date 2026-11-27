@@ -65,6 +65,7 @@ export function ScrollProgressIndicator(): React.ReactElement {
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof CSS === 'undefined') return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     if (CSS.supports('animation-timeline', 'scroll()')) return
 
     const updateProgress = (): void => {
@@ -79,13 +80,18 @@ export function ScrollProgressIndicator(): React.ReactElement {
 
     updateProgress()
     window.addEventListener('scroll', updateProgress, { passive: true })
-    return () => window.removeEventListener('scroll', updateProgress)
+    window.addEventListener('resize', updateProgress, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', updateProgress)
+      window.removeEventListener('resize', updateProgress)
+    }
   }, [])
 
   return (
     <div
       id="scroll-progress"
       ref={barRef}
+      data-print-hide="true"
       className="scroll-progress-bar"
       aria-hidden="true"
     />
@@ -147,7 +153,7 @@ export function PatternDotGrid({
     >
       <defs>
         <pattern id={id} width="28" height="28" patternUnits="userSpaceOnUse">
-          <circle cx="2" cy="2" r="1" fill="rgba(205, 194, 237, 0.14)" />
+          <circle cx="2" cy="2" r="1" fill="var(--border-default, #303744)" opacity="0.45" />
         </pattern>
         <pattern
           id={`${id}-major`}
@@ -159,7 +165,8 @@ export function PatternDotGrid({
           <path
             d="M 140 0 L 0 0 0 140"
             fill="none"
-            stroke="rgba(205, 194, 237, 0.06)"
+            stroke="var(--border-default, #303744)"
+            strokeOpacity="0.25"
             strokeWidth="1"
           />
           <path

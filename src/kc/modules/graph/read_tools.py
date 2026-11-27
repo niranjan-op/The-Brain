@@ -8,6 +8,7 @@ and `evidence` are hydrated on demand from Postgres for only the requested node 
 from __future__ import annotations
 
 from collections import OrderedDict, deque
+from collections.abc import Sequence
 from typing import Any, Protocol
 
 from sqlalchemy import text
@@ -43,9 +44,9 @@ def invalidate_allowed_nodes_cache(project_uuid: str | None = None) -> None:
 
 
 def _is_node_allowed(
-    doc_uuids: list[str | None],
+    doc_uuids: Sequence[str | None],
     excluded_set: set[str],
-    active_doc_uuids: list[str | None] | None = None,
+    active_doc_uuids: Sequence[str | None] | None = None,
 ) -> bool:
     """A node is excluded if it has document evidence and ALL its active document evidence is in `excluded_set`
     (or soft-deleted). Nodes with only chat/url/commit evidence (`doc_uuids` empty) remain visible."""
@@ -446,6 +447,7 @@ async def expand_subgraph(
         if nid in hydrated_map:
             node_dict = dict(hydrated_map[nid])
             node_dict["is_seed"] = nid in seed_set
+            node_dict["evidence"] = evidence_by_node.get(nid, [])
             ordered_nodes.append(node_dict)
 
     return {

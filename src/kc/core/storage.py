@@ -20,9 +20,9 @@ s3 = boto3.client(
     region_name=settings.s3_region,
     config=Config(
         s3={"addressing_style": "path"},
-        connect_timeout=1,
-        read_timeout=10,
-        retries={"max_attempts": 1},
+        connect_timeout=5,
+        read_timeout=30,
+        retries={"max_attempts": 3},
     ),
 )
 

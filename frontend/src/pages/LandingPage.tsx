@@ -1,46 +1,53 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { AuroraBackground } from '@/components/ui/aurora-background'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { Navbar } from '../components/landing/Navbar'
 import { HeroSection } from '../components/landing/HeroSection'
-import { WorkspaceDemoSection } from '../components/landing/WorkspaceDemoSection'
 import { WorkflowSection } from '../components/landing/WorkflowSection'
-import { FeaturesSection } from '../components/landing/FeaturesSection'
-import { KnowledgeGraphSection } from '../components/landing/KnowledgeGraphSection'
-import { DeepAgentSection } from '../components/landing/DeepAgentSection'
+import { RustinIntelligenceSection } from '../components/landing/RustinIntelligenceSection'
+import { ProductWalkthroughSection } from '../components/landing/ProductWalkthroughSection'
+import { FaqSection } from '../components/landing/FaqSection'
 import { FooterSection } from '../components/landing/FooterSection'
 import {
-  SectionConduit,
-  ScrollRevealObserver,
-} from '../components/patterns/GraphPatterns'
+  getAppTheme,
+  runThemeViewTransition,
+  setAppTheme,
+  subscribeAppTheme,
+} from '../lib/workspaceStore'
 
 export function LandingPage(): React.ReactElement {
+  const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() =>
+    getAppTheme(),
+  )
+
+  useEffect(() => {
+    return subscribeAppTheme((next) => {
+      setThemeMode(next)
+    })
+  }, [])
+
+  const toggleLandingTheme = (e: React.MouseEvent<HTMLButtonElement>): void => {
+    void runThemeViewTransition(e, () => {
+      const next: 'dark' | 'light' = themeMode === 'dark' ? 'light' : 'dark'
+      setThemeMode(next)
+      setAppTheme(next)
+    })
+  }
+
   return (
-    <div className="landing-root">
-      <a href="#main-content" className="skip-link">
-        Skip to main content
-      </a>
-      <Navbar />
+    <TooltipProvider delayDuration={150}>
+      <AuroraBackground themeMode={themeMode} className="landing-root">
+        <Navbar themeMode={themeMode} onToggleTheme={toggleLandingTheme} />
 
-      <main id="main-content">
-        <HeroSection />
-
-        <SectionConduit variant="left-to-center" />
-        <WorkflowSection />
-
-        <SectionConduit variant="center-to-right" />
-        <KnowledgeGraphSection />
-
-        <SectionConduit variant="converge" />
-        <DeepAgentSection />
-
-        <SectionConduit variant="left-to-center" />
-        <WorkspaceDemoSection />
-
-        <SectionConduit variant="left-to-center" />
-        <FeaturesSection />
-
-        <FooterSection />
-      </main>
-      <ScrollRevealObserver />
-    </div>
+        <main id="main-content" tabIndex={-1} className="outline-none">
+          <HeroSection />
+          <WorkflowSection />
+          <RustinIntelligenceSection />
+          <ProductWalkthroughSection />
+          <FaqSection />
+          <FooterSection />
+        </main>
+      </AuroraBackground>
+    </TooltipProvider>
   )
 }

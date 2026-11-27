@@ -9,9 +9,9 @@
   position: sticky;
   top: 0;
   z-index: 40;
-  background-color: rgba(12, 11, 14, 0.9);
+  background-color: rgba(21, 23, 30, 0.92);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border-hairline);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .workspace-topbar-inner {
@@ -544,9 +544,59 @@
 }
 
 @media (max-width: 900px) {
+
   .projects-layout-grid,
   .auth-form-grid,
   .session-controls-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Token-by-token streaming reveal animation */
+@keyframes kc-token-appear {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 3px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes kc-caret-pulse {
+  0%,
+  100% {
+    opacity: 0.92;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.kc-stream-token {
+  display: inline-block;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: kc-token-appear 170ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+.kc-md-streaming > p:last-child::after,
+.kc-md-streaming > h2:last-child::after,
+.kc-md-streaming > h3:last-child::after,
+.kc-md-streaming > h4:last-child::after,
+.kc-md-streaming > ul:last-child > li:last-child::after,
+.kc-md-streaming > ol:last-child > li:last-child::after,
+.kc-md-streaming > blockquote:last-child > p:last-child::after {
+  content: '';
+  display: inline-block;
+  width: 0.42em;
+  height: 1.02em;
+  margin-left: 3px;
+  vertical-align: text-bottom;
+  border-radius: 1px;
+  background: linear-gradient(180deg, #38bdf8 0%, #8b3dff 100%);
+  @media (prefers-reduced-motion: no-preference) {
+    animation: kc-caret-pulse 850ms ease-in-out infinite;
   }
 }

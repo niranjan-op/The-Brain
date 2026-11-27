@@ -1,0 +1,578 @@
+@import 'tailwindcss';
+/* Legacy element defaults live in the base layer so Tailwind utilities override them. */
+@import './global.css' layer(base);
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: 'Geologica Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono: 'Cascadia Code', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+
+  --color-aurora-violet: var(--aurora-violet);
+  --color-aurora-ice: var(--aurora-ice);
+  --color-aurora-cyan: var(--aurora-cyan);
+  --color-aurora-lilac: var(--aurora-lilac);
+  --color-signal: var(--signal);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Vibrant Orbital AI / NovaGrid dark palette: rich royal indigos, electric violet, ice-blue, and cyan. */
+:root {
+  color-scheme: light dark;
+
+  &:has(> head > meta[name='color-scheme'][content='dark']) {
+    color-scheme: dark;
+  }
+
+  &:has(> head > meta[name='color-scheme'][content='light']) {
+    color-scheme: light;
+  }
+
+  --aurora-violet: #8b3dff;
+  --aurora-ice: #8ec5ff;
+  --aurora-cyan: #2fd6ff;
+  --aurora-lilac: #d3b8ff;
+  --aurora-indigo: #4b25d1;
+  --signal: #14f194;
+
+  --background: #040117;
+  --foreground: #f6f7ff;
+  --card: #0b071e;
+  --card-foreground: #f6f7ff;
+  --popover: #0d0826;
+  --popover-foreground: #f6f7ff;
+  --primary: #f6f7ff;
+  --primary-foreground: #05021a;
+  --secondary: rgb(255 255 255 / 0.08);
+  --secondary-foreground: #f6f7ff;
+  --muted: rgb(255 255 255 / 0.07);
+  --muted-foreground: #b8b3d6;
+  --accent: rgb(139 61 255 / 0.18);
+  --accent-foreground: #f6f7ff;
+  --destructive: #f87171;
+  --border: rgb(211 184 255 / 0.16);
+  --input: rgb(211 184 255 / 0.2);
+  --ring: #8b3dff;
+  --chart-1: #8b3dff;
+  --chart-2: #8ec5ff;
+  --chart-3: #2fd6ff;
+  --chart-4: #d3b8ff;
+  --chart-5: #14f194;
+  --radius: 0.75rem;
+  --sidebar: #090520;
+  --sidebar-foreground: #f6f7ff;
+  --sidebar-primary: #8b3dff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgb(255 255 255 / 0.07);
+  --sidebar-accent-foreground: #f6f7ff;
+  --sidebar-border: rgb(211 184 255 / 0.16);
+  --sidebar-ring: #8ec5ff;
+}
+
+/* Light theme surface tokens for root portals, dialogs, banners, and shared controls */
+:root:not(.dark) {
+  --aurora-violet: #6d28d9;
+  --aurora-ice: #0284c7;
+  --aurora-cyan: #0369a1;
+  --aurora-lilac: #5b21b6;
+  --aurora-indigo: #4f46e5;
+  --signal: #059669;
+
+  --background: #fafafa;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --card-foreground: #09090b;
+  --popover: #ffffff;
+  --popover-foreground: #09090b;
+  --primary: #0284c7;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #52525b;
+  --accent: #f4f4f5;
+  --accent-foreground: #09090b;
+  --destructive: #dc2626;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #0284c7;
+  --sidebar: #f4f4f5;
+  --sidebar-foreground: #09090b;
+  --sidebar-primary: #0284c7;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e4e4e7;
+  --sidebar-accent-foreground: #09090b;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #0284c7;
+
+  --bg-void: #fafafa;
+  --bg-obsidian: #ffffff;
+  --bg-slate: #f4f4f5;
+  --bg-slate-hover: #e4e4e7;
+  --bg-elevated: #ffffff;
+  --ink-primary: #09090b;
+  --ink-secondary: #3f3f46;
+  --ink-muted: #52525b;
+  --accent-primary: #0284c7;
+  --accent-cyan: #0284c7;
+  --accent-ice: #4f46e5;
+  --accent-violet: #6d28d9;
+  --border-hairline: rgba(15, 23, 42, 0.1);
+  --border-subtle: rgba(15, 23, 42, 0.16);
+  --border-strong: rgba(2, 132, 199, 0.4);
+  --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.08), 0 1px 2px -1px rgba(15, 23, 42, 0.06);
+  --shadow-panel: 0 12px 28px -8px rgba(15, 23, 42, 0.14);
+  --shadow-elevated: 0 16px 32px -10px rgba(15, 23, 42, 0.16);
+  --shadow-popover: 0 20px 36px -12px rgba(15, 23, 42, 0.18);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background-color: rgb(139 61 255 / 0.42);
+    color: #ffffff;
+  }
+}
+
+/*
+ * Neutral Obsidian & Clean Paper Workspace Themes (Inside-Project Chatbot & Workspace).
+ * Explicitly avoids Aurora purple gradients and glowing blurs inside the workspace.
+ */
+[data-workspace-theme='dark'] {
+  --background: #09090b;
+  --foreground: #f4f4f5;
+  --card: #111114;
+  --card-foreground: #f4f4f5;
+  --popover: #141418;
+  --popover-foreground: #f4f4f5;
+  --primary: #38bdf8;
+  --primary-foreground: #09090b;
+  --secondary: #18181b;
+  --secondary-foreground: #f4f4f5;
+  --muted: #18181b;
+  --muted-foreground: #a1a1aa;
+  --accent: #1f1f23;
+  --accent-foreground: #f4f4f5;
+  --destructive: #ef4444;
+  --border: #27272a;
+  --input: #27272a;
+  --ring: #38bdf8;
+  --sidebar: #0c0c0e;
+  --sidebar-foreground: #f4f4f5;
+  --sidebar-primary: #38bdf8;
+  --sidebar-primary-foreground: #09090b;
+  --sidebar-accent: #18181b;
+  --sidebar-accent-foreground: #f4f4f5;
+  --sidebar-border: #27272a;
+  --sidebar-ring: #38bdf8;
+  --ink-primary: #f4f4f5;
+  --ink-secondary: #a1a1aa;
+  --ink-muted: #71717a;
+  color-scheme: dark;
+}
+
+[data-workspace-theme='light'] {
+  --background: #fafafa;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --card-foreground: #09090b;
+  --popover: #ffffff;
+  --popover-foreground: #09090b;
+  --primary: #0284c7;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #52525b;
+  --accent: #f4f4f5;
+  --accent-foreground: #09090b;
+  --destructive: #dc2626;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #0284c7;
+  --sidebar: #f4f4f5;
+  --sidebar-foreground: #09090b;
+  --sidebar-primary: #0284c7;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e4e4e7;
+  --sidebar-accent-foreground: #09090b;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #0284c7;
+  --ink-primary: #09090b;
+  --ink-secondary: #52525b;
+  --ink-muted: #71717a;
+  color-scheme: light;
+}
+
+/*
+ * Landing Page Daylight Aurora Theme ([data-landing-theme='light'])
+ * Keeps the orbital aurora identity in crisp daylight while flipping all landing cards,
+ * flowchart nodes, and interactive showcases to clean paper surfaces.
+ */
+[data-landing-theme='light'] {
+  --aurora-violet: #6d28d9;
+  --aurora-ice: #0284c7;
+  --aurora-cyan: #0369a1;
+  --aurora-lilac: #5b21b6;
+  --aurora-indigo: #4f46e5;
+  --signal: #059669;
+
+  --background: #f8f9fc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #0f172a;
+  --primary-foreground: #ffffff;
+  --secondary: #eef2ff;
+  --secondary-foreground: #1e1b4b;
+  --muted: #f1f5f9;
+  --muted-foreground: #475569;
+  --accent: rgba(109, 40, 217, 0.1);
+  --accent-foreground: #0f172a;
+  --destructive: #dc2626;
+  --border: rgba(15, 23, 42, 0.12);
+  --input: rgba(15, 23, 42, 0.16);
+  --ring: #6d28d9;
+
+  --bg-void: #f8f9fc;
+  --bg-obsidian: #ffffff;
+  --bg-slate: #f1f5f9;
+  --bg-slate-hover: #e2e8f0;
+  --bg-elevated: #ffffff;
+  --ink-primary: #0f172a;
+  --ink-secondary: #334155;
+  --ink-muted: #64748b;
+  --accent-primary: #6d28d9;
+  --accent-cyan: #0284c7;
+  --accent-cyan-soft: rgba(2, 132, 199, 0.12);
+  --accent-ice: #4f46e5;
+  --accent-violet: #6d28d9;
+  --status-ready: #059669;
+  --border-hairline: rgba(15, 23, 42, 0.1);
+  --border-subtle: rgba(15, 23, 42, 0.16);
+  --border-strong: rgba(109, 40, 217, 0.4);
+  color-scheme: light;
+}
+
+[data-landing-theme='light'] .agent-showcase-stage {
+  background-color: #eef2ff;
+  background-image:
+    radial-gradient(circle at 14% 18%, rgba(109, 40, 217, 0.12), transparent 52%),
+    radial-gradient(circle at 86% 82%, rgba(2, 132, 199, 0.1), transparent 55%);
+  border-color: rgba(109, 40, 217, 0.24);
+}
+
+[data-landing-theme='light'] .agent-desktop-window,
+[data-landing-theme='light'] .agent-session-stream,
+[data-landing-theme='light'] .agent-pillar-card,
+[data-landing-theme='light'] .agent-skeleton-window,
+[data-landing-theme='light'] .agent-skeleton-terminal {
+  background-color: #ffffff;
+  border-color: rgba(15, 23, 42, 0.14);
+  box-shadow: 0 20px 45px -15px rgba(15, 23, 42, 0.12);
+}
+
+[data-landing-theme='light'] .agent-window-titlebar,
+[data-landing-theme='light'] .agent-icon-rail,
+[data-landing-theme='light'] .agent-sessions-sidebar,
+[data-landing-theme='light'] .agent-artifact-sidebar,
+[data-landing-theme='light'] .terminal-titlebar {
+  background-color: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+[data-landing-theme='light'] .ws-tab,
+[data-landing-theme='light'] .agent-command-search,
+[data-landing-theme='light'] .sessions-search-box,
+[data-landing-theme='light'] .session-card-btn,
+[data-landing-theme='light'] .session-mini-badge,
+[data-landing-theme='light'] .stream-event-card,
+[data-landing-theme='light'] .stream-event-meta,
+[data-landing-theme='light'] .stream-steer-pill,
+[data-landing-theme='light'] .stream-composer-box,
+[data-landing-theme='light'] .art-tab,
+[data-landing-theme='light'] .artifact-preview-card,
+[data-landing-theme='light'] .artifact-ref-chip,
+[data-landing-theme='light'] .terminal-prompt-box {
+  background-color: #f1f5f9;
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #1e293b;
+}
+
+[data-landing-theme='light'] .session-card-btn.is-selected {
+  background-color: rgba(109, 40, 217, 0.1);
+  border-color: #6d28d9;
+}
+
+[data-landing-theme='light'] .agent-terminal-window {
+  background-color: #ffffff;
+  border-color: rgba(109, 40, 217, 0.35);
+  box-shadow: 0 24px 54px -12px rgba(15, 23, 42, 0.18);
+}
+
+/*
+ * Centered Aurora Backdrop.
+ * Kept anchored at the center of the viewport (50% X) with rich royal purple / electric violet / cyan
+ * beams. As the user scrolls down, the aurora stripe phase shifts smoothly while remaining centered.
+ */
+@keyframes aurora-center-scroll {
+  0% {
+    background-position: 50% 50%, 50% 50%;
+  }
+
+  100% {
+    background-position: 110% 50%, 92% 50%;
+  }
+}
+
+.aurora-field {
+  mask-image: radial-gradient(ellipse 88% 72% at 50% 48%,
+      #000 32%,
+      transparent 85%);
+}
+
+@supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
+  @media (prefers-reduced-motion: no-preference) {
+
+    .aurora-field-scroll,
+    .aurora-field-scroll::after {
+      animation: aurora-center-scroll linear both;
+      animation-timeline: scroll(root block);
+    }
+  }
+}
+
+/*
+ * Full-page circular theme toggle animation via the View Transitions API.
+ * Disables default root cross-fade so the Web Animations clip-path circle
+ * expands cleanly from the toggle button across the viewport.
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/*
+ * Agent answer section marker: a 3x3 dot matrix before h2 headings, echoing the graph motif
+ * and making long answers scannable. Absolutely positioned so mixed inline heading content
+ * (bold, code, links) still wraps as normal text.
+ */
+.agent-md-section {
+  position: relative;
+  padding-left: 1rem;
+}
+
+.agent-md-section::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.42em;
+  width: 9px;
+  height: 9px;
+  background-image: radial-gradient(circle, var(--primary) 1px, transparent 1.3px);
+  background-size: 3px 3px;
+  opacity: 0.75;
+}
+
+@media (forced-colors: active) {
+  .agent-md-section {
+    padding-left: 0;
+  }
+
+  .agent-md-section::before {
+    display: none;
+  }
+}
+
+.agent-md ::selection {
+  background-color: color-mix(in oklab, var(--primary) 28%, transparent);
+}
+
+/* Consistent interactive hover, focus-visible, validation, and modal scroll containment */
+:where(a, button, summary, [role='button'], [role='tab']):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+:where(input, textarea, select)[aria-invalid='true'],
+:where(input, textarea, select):user-invalid {
+  border-color: var(--destructive);
+}
+
+:where(input, textarea, select)[aria-invalid='true']:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--destructive) 25%, transparent);
+}
+
+[data-slot='dialog-content'],
+[data-slot='sheet-content'] {
+  overscroll-behavior: contain;
+}
+
+[data-slot='dialog-overlay'],
+[data-slot='sheet-overlay'] {
+  overscroll-behavior: contain;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Clean Print Stylesheet */
+@media print {
+  @page {
+    margin: 16mm;
+  }
+
+  header,
+  nav,
+  footer nav,
+  .scroll-progress-bar,
+  .skip-link,
+  [data-print-hide='true'],
+  .no-print,
+  [data-slot='dialog-overlay'],
+  [data-slot='sheet-overlay'],
+  .aurora-field,
+  .pattern-svg,
+  .section-conduit,
+  canvas {
+    display: none !important;
+  }
+
+  html,
+  body,
+  .landing-root,
+  .workspace-page,
+  .auth-page {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 11pt !important;
+    line-height: 1.5 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  * {
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    text-shadow: none !important;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: #0f172a !important;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  p,
+  li,
+  td,
+  th,
+  blockquote {
+    color: #1e293b !important;
+  }
+
+  [data-slot='card'],
+  [data-slot='accordion-item'],
+  [data-slot='code-block'],
+  pre,
+  figure,
+  table,
+  .document-row {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  pre,
+  code {
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    overflow: visible !important;
+  }
+
+  a[href^='http']::after {
+    content: ' (' attr(href) ')';
+    font-size: 0.82em;
+    color: #475569;
+  }
+}

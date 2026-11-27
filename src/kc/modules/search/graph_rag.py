@@ -12,6 +12,7 @@ from sqlalchemy import text
 from src.kc.core.config import settings
 from src.kc.core.db import SessionLocal
 from src.kc.core.llm import client as _client
+from src.kc.modules.chat.prompts import AGENT_ANSWER_SYSTEM_PROMPT, AGENT_TOOL_SYSTEM_PROMPT
 from src.kc.modules.graph import read_tools
 from src.kc.modules.ingestion.embedder import EMBED_DIMS, embed_query
 from src.kc.modules.search.hybrid import search_chunks
@@ -19,15 +20,7 @@ from src.kc.modules.search.hybrid import search_chunks
 MAX_CONTEXT_CHARS = 24000
 MAX_TOOL_CALLS_PER_TURN = 4
 
-SYNTHESIS_SYSTEM_PROMPT = """\
-You are the Knowledge Cartographer research assistant.
-Answer the user's question using ONLY the provided document chunks, knowledge graph nodes,
-relationships, and evidence excerpts.
-- Cite every chunk and graph node you rely on in `cited_chunk_ids` and `cited_node_uuids`.
-- Only cite `chunk_id`s and `node_uuid`s that explicitly appear in the provided context or tool outputs.
-- If a decision was superseded (`SUPERSEDES` edge or `status=superseded`), explain both the current
-  agreed state and what it superseded.
-"""
+SYNTHESIS_SYSTEM_PROMPT = AGENT_ANSWER_SYSTEM_PROMPT
 
 
 class GroundedAnswer(BaseModel):
@@ -206,9 +199,16 @@ def format_context_within_budget(
     graph: dict[str, Any],
     tool_outputs: list[dict[str, Any]] | None = None,
     max_chars: int = MAX_CONTEXT_CHARS,
+    doc_names: dict[str, str] | None = None,
 ) -> str:
     """Assemble retrieved chunks, seed nodes, relationships, neighbour nodes, and tool outputs
-    within `max_chars`, prioritizing chunks and seed nodes first."""
+    within `max_chars`, prioritizing chunks and seed nodes first.
+
+    Each chunk header carries a ready-made human `cite_as` reference (filename, page, paragraph)
+    so the model cites what the user can see instead of internal identifiers."""
+    from src.kc.modules.chat.citations import format_page_paragraph_label
+
+    names = doc_names or {}
     sections: list[str] = []
     used = 0
 
@@ -224,10 +224,18 @@ def format_context_within_budget(
         _try_append("=== RETRIEVED DOCUMENT CHUNKS ===")
         for c in chunks:
             heading = c.get("heading_path") or "root"
-            pages = f"{c.get('page_start', 1)}-{c.get('page_end', 1)}"
+            p_start = c.get("page_start") or 1
+            p_end = c.get("page_end") or p_start
+            pages = f"{p_start}-{p_end}"
+            payload = c.get("payload") or {}
+            para_s = c.get("para_start") or payload.get("para_start") or (int(c.get("ordinal") or 0) + 1)
+            para_e = c.get("para_end") or payload.get("para_end") or para_s
+            paras = f"{para_s}-{para_e}"
+            filename = c.get("filename") or names.get(str(c.get("doc_uuid"))) or "source document"
+            cite_as = f"({filename}, {format_page_paragraph_label(c)[0]})"
             block = (
-                f"[CHUNK chunk_id={c['chunk_id']} doc_uuid={c['doc_uuid']} "
-                f"heading={heading!r} pages={pages}]\n{c['text']}\n"
+                f"[CHUNK chunk_id={c['chunk_id']} doc_uuid={c['doc_uuid']} source={filename!r} "
+                f"heading={heading!r} pages={pages} paragraphs={paras} cite_as={cite_as!r}]\n{c['text']}\n"
             )
             if not _try_append(block):
                 break
@@ -237,18 +245,21 @@ def format_context_within_budget(
     ev_by_node = graph.get("evidence_by_node") or {}
 
     if nodes:
-        _try_append("\n=== KNOWLEDGE GRAPH NODES (Hydrated from Postgres) ===")
+        _try_append("\n=== SYNTHESIZED ARCHITECTURAL CONTEXT (Backed by Document Chunks) ===")
         # Seeds are already ordered first by expand_subgraph
         for n in nodes:
             nid = n["node_uuid"]
-            evs = ev_by_node.get(nid) or []
-            ev_text = "; ".join(f"({e['kind']}:{e['ref']}) {e.get('excerpt') or ''}" for e in evs[:3])
+            evs = ev_by_node.get(nid) or n.get("evidence") or []
+            ev_text = "; ".join(
+                f"(source_chunk_id={e['ref']} doc_uuid={e.get('doc_uuid')}) {e.get('excerpt') or ''}"
+                for e in evs[:3]
+            )
             desc = n.get("text") or n.get("summary") or "(summary omitted due to mixed source selection)"
             block = (
                 f"[NODE node_uuid={nid} type={n['type']} layer={n.get('layer')} "
                 f"name={n['name']!r} status={n.get('status')} seed={n.get('is_seed', False)}]\n"
                 f"Description: {desc}\n"
-                + (f"Evidence: {ev_text}\n" if ev_text else "")
+                + (f"Source Document Evidence: {ev_text}\n" if ev_text else "")
             )
             if not _try_append(block):
                 break
@@ -264,7 +275,22 @@ def format_context_within_budget(
     if tool_outputs:
         _try_append("\n=== FOLLOW-UP TOOL OUTPUTS ===")
         for item in tool_outputs:
-            block = f"[TOOL {item['tool']}({json.dumps(item['args'])})]\n{json.dumps(item['result'])}\n"
+            result = item.get("result")
+            is_empty_result = (
+                result == []
+                or (
+                    isinstance(result, dict)
+                    and not result.get("nodes")
+                    and not result.get("relationships")
+                    and set(result.keys()).issubset({"nodes", "relationships"})
+                )
+            )
+            rendered_result = "(no matching records found)" if is_empty_result else json.dumps(result)
+            block = (
+                f'<tool_output name="{item["tool"]}" args={json.dumps(item["args"])}>\n'
+                f"{rendered_result}\n"
+                "</tool_output>\n"
+            )
             if not _try_append(block):
                 break
 
@@ -359,11 +385,7 @@ async def _call_tool_turn(prompt_text: str, tools: list[dict[str, Any]]) -> dict
     """Execute one tool-enabled interaction turn WITHOUT `response_format` JSON schema."""
     interaction = await _client().aio.interactions.create(
         model=settings.chat_model,
-        system_instruction=(
-            SYNTHESIS_SYSTEM_PROMPT
-            + "\nIf the initial context is insufficient, call one of the provided read tools. "
-            "Otherwise, state that you have sufficient context."
-        ),
+        system_instruction=AGENT_TOOL_SYSTEM_PROMPT,
         input=[{"type": "text", "text": prompt_text}],
         tools=tools,  # pyright: ignore[reportArgumentType]
         store=False,

@@ -29,6 +29,7 @@ class KeywordSearch(Protocol):
         excluded_docs: list[str] | None = None,
     ) -> list[tuple[str, float]]:
         """Return `(chunk_id, score)` ordered best-first (`score > 0`)."""
+        ...
 
 
 class Bm25Search:
