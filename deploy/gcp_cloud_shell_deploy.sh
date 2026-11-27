@@ -45,6 +45,9 @@ grant_sa_role() {
 banner "Stage 1 / 10 — Configuration"
 
 DEFAULT_PROJECT="$(gcloud config get-value project 2>/dev/null || true)"
+if [[ -z "$DEFAULT_PROJECT" || "$DEFAULT_PROJECT" == "(unset)" ]]; then
+  DEFAULT_PROJECT="cosmograph-e4420"
+fi
 read -r -p "GCP Project ID [${DEFAULT_PROJECT}]: " GCP_PROJECT_ID
 GCP_PROJECT_ID="${GCP_PROJECT_ID:-$DEFAULT_PROJECT}"
 if [[ -z "$GCP_PROJECT_ID" ]]; then
@@ -58,6 +61,9 @@ REGION="${REGION:-us-central1}"
 
 read -r -p "Firebase Project ID [${GCP_PROJECT_ID}]: " FIREBASE_PROJECT_ID
 FIREBASE_PROJECT_ID="${FIREBASE_PROJECT_ID:-$GCP_PROJECT_ID}"
+DEFAULT_FIREBASE_PROJECT="cosmograph-e4420"
+read -r -p "Firebase Project ID [${DEFAULT_FIREBASE_PROJECT}]: " FIREBASE_PROJECT_ID
+FIREBASE_PROJECT_ID="${FIREBASE_PROJECT_ID:-$DEFAULT_FIREBASE_PROJECT}"
 
 DEFAULT_BUCKET="kc-uploads-${GCP_PROJECT_ID}"
 read -r -p "GCS Bucket Name [${DEFAULT_BUCKET}]: " GCS_BUCKET
@@ -111,6 +117,9 @@ echo "Summary:"
 echo "  Project:          $GCP_PROJECT_ID"
 echo "  Region:           $REGION"
 echo "  Firebase Project: $FIREBASE_PROJECT_ID"
+if [[ "$FIREBASE_PROJECT_ID" != "$GCP_PROJECT_ID" ]]; then
+  echo "  Auth Note:        Cross-project Firebase ID token verification uses public Google certs (no JSON key required)."
+fi
 echo "  GCS Bucket:       $GCS_BUCKET"
 echo "  LLM Mode:         $LLM_MODE"
 echo "  Graph Backend:    $GRAPH_READ_BACKEND"
@@ -122,7 +131,18 @@ if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
 fi
 
 banner "Stage 2 / 10 — Enabling GCP APIs"
+BILLING_ENABLED="$(gcloud billing projects describe "$GCP_PROJECT_ID" --format='value(billingEnabled)' 2>/dev/null || true)"
+if [[ "$BILLING_ENABLED" == "False" ]]; then
+  echo "ERROR: Billing is not enabled on GCP project '${GCP_PROJECT_ID}'." >&2
+  echo "Link a billing account (Blaze plan) at:" >&2
+  echo "  https://console.cloud.google.com/billing/linkedaccount?project=${GCP_PROJECT_ID}" >&2
+  echo "Or re-run and enter a separate billed GCP Project ID while keeping FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}." >&2
+  exit 1
+fi
+
 gcloud services enable \
+  iam.googleapis.com \
+  cloudresourcemanager.googleapis.com \
   run.googleapis.com \
   sqladmin.googleapis.com \
   artifactregistry.googleapis.com \
@@ -154,6 +174,14 @@ grant_sa_role "serviceAccount:${WORKER_SA}" "roles/secretmanager.secretAccessor"
 grant_sa_role "serviceAccount:${WORKER_SA}" "roles/aiplatform.user"
 
 grant_sa_role "serviceAccount:${SCHED_SA}" "roles/run.invoker"
+
+PROJECT_NUMBER="$(gcloud projects describe "$GCP_PROJECT_ID" --format='value(projectNumber)')"
+COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+if gcloud iam service-accounts describe "$COMPUTE_SA" --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
+  grant_sa_role "serviceAccount:${COMPUTE_SA}" "roles/cloudbuild.builds.builder"
+  grant_sa_role "serviceAccount:${COMPUTE_SA}" "roles/artifactregistry.writer"
+  grant_sa_role "serviceAccount:${COMPUTE_SA}" "roles/logging.logWriter"
+fi
 
 banner "Stage 4 / 10 — GCS Bucket & HMAC Keys"
 if ! gcloud storage buckets describe "gs://${GCS_BUCKET}" --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
@@ -350,6 +378,7 @@ echo "  1. Deploy frontend/ to Vercel with:"
 echo "       VITE_API_BASE_URL=${API_URL}"
 echo "       VITE_FIREBASE_API_KEY=<your-firebase-web-api-key>"
 echo "       VITE_FIREBASE_AUTH_DOMAIN=<your-firebase-auth-domain>"
+echo "       VITE_FIREBASE_AUTH_DOMAIN=${FIREBASE_PROJECT_ID}.firebaseapp.com"
 echo "       VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}"
 echo "  2. Update CORS_ORIGINS on kc-api with your Vercel URL:"
 echo "       gcloud run services update kc-api --region=${REGION} --project=${GCP_PROJECT_ID} --update-env-vars=\"^@^CORS_ORIGINS=https://YOUR_APP.vercel.app\""
